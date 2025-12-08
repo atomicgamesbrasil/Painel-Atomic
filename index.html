@@ -205,8 +205,12 @@
                     <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent"></div>
                     
                     <div class="text-center mb-8">
-                        <div class="w-20 h-20 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-5 border-2 border-yellow-500/30 shadow-2xl">
-                            <i class="fa-solid fa-shield-halved text-3xl text-yellow-500"></i>
+                        <!-- CORREÇÃO 1: Adicionar a logo da Atomic Games na bolinha de login -->
+                        <div class="w-20 h-20 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-5 border-2 border-yellow-500/30 shadow-2xl overflow-hidden">
+                            <img src="https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/atomiclogo.webp" 
+                                 alt="Logo Atomic" 
+                                 onerror="this.src='https://placehold.co/100?text=AG'"
+                                 class="w-full h-full object-cover p-2">
                         </div>
                         <h2 class="text-3xl font-bold text-white">Acesso Restrito</h2>
                         <p class="text-slate-400 text-sm mt-1">Painel Administrativo Atomic Games</p>
@@ -236,7 +240,8 @@
                 </header>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="glass-panel p-6 rounded-2xl border-l-4 border-yellow-500 relative overflow-hidden group">
+                    <!-- CORREÇÃO 2: Adicionar onclick para navegar para 'products' e cursor-pointer -->
+                    <div onclick="showSection('products')" class="glass-panel p-6 rounded-2xl border-l-4 border-yellow-500 relative overflow-hidden group cursor-pointer hover:bg-slate-800/80 transition-all duration-300">
                         <div class="absolute right-[-10px] top-[-10px] opacity-[0.05] group-hover:opacity-[0.1] transition-opacity transform group-hover:scale-110 duration-500">
                             <i class="fa-solid fa-gamepad text-9xl text-white"></i>
                         </div>
@@ -441,6 +446,7 @@
                 }
                 renderProducts(currentProducts);
                 document.getElementById('statTotalProducts').innerText = currentProducts.length;
+                showSection('dashboard'); // Garante que a primeira seção seja o dashboard
             } catch (e) {
                 console.error(e);
                 document.getElementById('productsTableBody').innerHTML = '<tr><td colspan="5" class="p-6 text-center text-red-400 bg-red-500/10 rounded-lg m-4"><i class="fa-solid fa-wifi mr-2"></i> Erro de Conexão com GitHub</td></tr>';
@@ -617,15 +623,21 @@
         function showSection(id) {
             document.getElementById('section-dashboard').classList.add('hidden');
             document.getElementById('section-products').classList.add('hidden');
-            document.getElementById('section-'+id).classList.remove('hidden');
+            
+            const targetSection = document.getElementById('section-'+id);
+            if (targetSection) {
+                targetSection.classList.remove('hidden');
+            }
             
             document.querySelectorAll('.nav-item').forEach(el => {
                 el.classList.remove('bg-yellow-500/10', 'text-yellow-400', 'border-yellow-500/20');
                 el.classList.add('text-slate-400');
             });
             const btn = document.getElementById('nav-'+id);
-            btn.classList.remove('text-slate-400');
-            btn.classList.add('bg-yellow-500/10', 'text-yellow-400', 'border-yellow-500/20');
+            if (btn) {
+                btn.classList.remove('text-slate-400');
+                btn.classList.add('bg-yellow-500/10', 'text-yellow-400', 'border-yellow-500/20');
+            }
         }
 
         function openProductModal() {
@@ -670,12 +682,15 @@
         }
 
         // Init
+        const savedTheme = localStorage.getItem('atomic_theme') || 'dark';
+        applyTheme(savedTheme);
+
         if (sessionStorage.getItem('atomic_auth') === 'true') {
             loginSuccess();
-        } else {
-             // Garante que o checkbox comece certo (desligado/dark) se não estiver logado
-             document.getElementById('themeToggleCheckbox').checked = false;
         }
+        
+        // Garante que o checkbox do tema reflita o estado atual ao carregar
+        document.getElementById('themeToggleCheckbox').checked = (savedTheme === 'light');
     </script>
 </body>
 </html>
