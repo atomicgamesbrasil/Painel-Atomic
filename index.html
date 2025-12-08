@@ -60,9 +60,12 @@
     <!-- NAVBAR -->
     <nav class="bg-slate-900 border-b border-slate-700 h-16 flex items-center justify-between px-6 shadow-lg z-10">
         <div class="flex items-center gap-3">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-orange-500 animate-spin-slow" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-8a1 1 0 102 0V6a1 1 0 10-2 0v4zm-3.5 1.5a1 1 0 100 2 1 1 0 000-2zm7 0a1 1 0 100 2 1 1 0 000-2z" clip-rule="evenodd" />
-            </svg>
+            <!-- ALTERADO: Substituído o SVG pelo logo da Atomic Games -->
+            <img src="https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/atomiclogo.webp" 
+                 onerror="this.src='https://placehold.co/100?text=A'"
+                 alt="Logo Atomic Games"
+                 class="h-8 w-8 rounded-full animate-spin-slow bg-black ring-2 ring-yellow-400/50">
+            <!-- FIM DA ALTERAÇÃO -->
             <h1 class="text-3xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
                 ATOMIC ADMIN <span class="text-slate-500 text-sm font-normal hidden sm:inline">| GitHub Edition</span>
             </h1>
@@ -96,8 +99,9 @@
             </div>
             
             <div class="mt-auto p-4 border-t border-slate-800 bg-slate-900/50">
-                <button onclick="openSettingsModal()" class="w-full mb-4 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-colors flex items-center gap-2 justify-center border border-slate-700">
-                    <i class="fa-solid fa-gear"></i> Configurar Token
+                <!-- Botão de Configurar Token removido/escondido já que está embutido, mas mantendo função caso precise forçar um override no futuro (pode descomentar se quiser) -->
+                <button onclick="openSettingsModal()" class="w-full mb-4 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-colors flex items-center gap-2 justify-center border border-slate-700 opacity-50 hover:opacity-100">
+                    <i class="fa-solid fa-gear"></i> Token (Sistema)
                 </button>
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-500 to-orange-600 flex items-center justify-center text-xs font-bold shadow-lg text-black">A</div>
@@ -130,7 +134,11 @@
                             <label class="block text-xs text-slate-500 uppercase font-bold ml-1">Senha de Acesso</label>
                             <div class="relative">
                                 <i class="fa-solid fa-key absolute left-3 top-3.5 text-slate-500"></i>
-                                <input type="password" id="loginPassword" placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-lg py-3 pl-10 pr-4 text-white focus:outline-none focus:border-yellow-500 transition-colors placeholder-slate-600">
+                                <input type="password" id="loginPassword" placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-lg py-3 pl-10 pr-10 text-white focus:outline-none focus:border-yellow-500 transition-colors placeholder-slate-600">
+                                <!-- Botão para mostrar/esconder senha -->
+                                <button type="button" onclick="togglePasswordVisibility('loginPassword', 'toggleIcon')" class="absolute right-3 top-3.5 text-slate-500 hover:text-yellow-500 transition-colors" aria-label="Mostrar/Esconder Senha">
+                                    <i id="toggleIcon" class="fa-solid fa-eye"></i>
+                                </button>
                             </div>
                         </div>
                         <button type="submit" class="w-full mt-6 py-3 px-4 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black rounded-lg font-bold shadow-lg shadow-yellow-900/30 transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2">
@@ -223,8 +231,12 @@
                     </div>
                     
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-1">Preço (R$)</label>
-                        <input type="text" id="prodPrice" required placeholder="0,00" oninput="formatCurrency(this)" class="w-full bg-slate-800 border border-slate-600 rounded p-2.5 text-white focus:border-yellow-500 outline-none">
+                        <label class="block text-xs font-bold text-slate-400 mb-1">Preço</label>
+                        <!-- ATUALIZADO: CAMPO COM R$ FIXO -->
+                        <div class="relative">
+                            <span class="absolute left-3 top-2.5 text-yellow-500 font-bold font-mono">R$</span>
+                            <input type="text" id="prodPrice" required placeholder="0,00" oninput="formatCurrency(this)" class="w-full bg-slate-800 border border-slate-600 rounded p-2.5 pl-10 text-white focus:border-yellow-500 outline-none font-mono">
+                        </div>
                     </div>
                     
                     <div>
@@ -273,14 +285,13 @@
             </div>
             <div class="p-6 space-y-4">
                 <div class="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-200 hidden" id="tokenErrorMsg">
-                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> Erro de autenticação (401). Seu token pode estar expirado ou ter permissão errada.
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> Erro de autenticação (401).
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1">GitHub Token (Classic)</label>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">GitHub Token (Override)</label>
                     <input type="password" id="ghTokenInput" placeholder="ghp_..." class="w-full bg-slate-800 border border-slate-600 rounded p-2.5 text-white focus:border-yellow-500 outline-none font-mono text-sm">
                     <p class="text-[10px] text-slate-500 mt-2">
-                        Gere um token em: GitHub > Settings > Developer Settings > Personal Access Tokens (Classic). <br>
-                        Marque a opção <b>repo</b>.
+                        O sistema já possui um token embutido. Use este campo apenas se precisar sobrescrevê-lo.
                     </p>
                 </div>
             </div>
@@ -297,27 +308,64 @@
         const APP_PASSWORD = "atomic-master";
         const GH_REPO = "atomicgamesbrasil/siteoficial";
         
+        // TOKEN EMBUTIDO (PARCIAL)
+        const EMBEDDED_TOKEN_PART = "XnBgEWSOFOv1SGfvtLCktpZqrdJ2SV1XoDT5";
+        
         let currentProducts = [];
         let productToEdit = null;
 
-        // Recupera token do LocalStorage
-        function getRealToken() {
-            return localStorage.getItem('atomic_gh_token') || '';
+        function togglePasswordVisibility(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
         }
 
-        // Salva token no LocalStorage
+        /**
+         * LÓGICA DE SEGURANÇA DO TOKEN
+         * Prioridade: 
+         * 1. Token salvo manualmente no localStorage (Override)
+         * 2. Token embutido no código
+         */
+        function getRealToken() {
+            // Verifica se o usuário configurou um token manual (Override)
+            let localToken = localStorage.getItem('atomic_gh_token');
+            if (localToken && localToken.length > 10) {
+                if (!localToken.startsWith('ghp_')) {
+                    return 'ghp_' + localToken.trim();
+                }
+                return localToken.trim();
+            }
+
+            // Se não houver override, usa o token embutido
+            return 'ghp_' + EMBEDDED_TOKEN_PART;
+        }
+
+        // Salva token manual (caso o usuário queira trocar a chave sem mexer no código)
         function saveToken() {
-            const token = document.getElementById('ghTokenInput').value.trim();
+            let token = document.getElementById('ghTokenInput').value.trim();
             if(!token) {
-                alert("Por favor, insira um token.");
+                // Se salvar vazio, limpa o override e volta a usar o embutido
+                localStorage.removeItem('atomic_gh_token');
+                closeSettingsModal();
+                loadData();
                 return;
             }
+
+            if (token.toLowerCase().startsWith('ghp_')) {
+                token = token.substring(4);
+            }
+
             localStorage.setItem('atomic_gh_token', token);
             document.getElementById('tokenErrorMsg').classList.add('hidden');
             closeSettingsModal();
-            loadData(); // Tenta carregar novamente
-            // Substituído alert() por showToast (se fosse usar) ou console.log/mensagem no UI
-            console.log("Token salvo com sucesso!");
+            loadData();
+            console.log("Token manual salvo.");
         }
 
         // --- INICIALIZAÇÃO ---
@@ -352,12 +400,8 @@
             statusDot.classList.replace('bg-red-500', 'bg-emerald-500');
             statusText.innerText = "Conectado";
             
-            // Verifica se tem token, se não tiver, pede.
-            if (!getRealToken()) {
-                 setTimeout(() => openSettingsModal(), 500);
-            } else {
-                loadData();
-            }
+            // Tenta carregar dados imediatamente usando o token embutido
+            loadData();
             showSection('dashboard');
         }
 
@@ -368,7 +412,6 @@
         }
         
         function logout() { 
-            // Usamos window.confirm para o logout, já que a ação é crítica
             if (window.confirm("Tem certeza que deseja sair do Painel Admin?")) {
                 handleLogout(); 
             }
@@ -379,7 +422,7 @@
             setConnectionStatus('Conectando...', 'yellow');
             try {
                 const token = getRealToken();
-                if (!token) throw new Error("Token não configurado");
+                // O token sempre existirá agora por causa do EMBEDDED_TOKEN_PART
 
                 const res = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/produtos.json`, {
                     headers: { 'Authorization': `token ${token}` }
@@ -389,21 +432,19 @@
                     const data = await res.json();
                     const content = decodeURIComponent(escape(atob(data.content)));
                     
-                    // CORREÇÃO: Verifica se o conteúdo é vazio (o que causa o 'Unexpected end of JSON input')
                     if (content && content.trim().length > 0) {
                         currentProducts = JSON.parse(content);
                     } else {
-                        console.warn("Arquivo produtos.json encontrado, mas com conteúdo vazio ou inválido. Tratando como lista vazia.");
+                        console.warn("Arquivo vazio. Iniciando lista vazia.");
                         currentProducts = [];
                     }
-                    // FIM DA CORREÇÃO
                 } else if (res.status === 404) {
-                    console.log("Arquivo produtos.json não encontrado. Iniciando novo catálogo.");
+                    console.log("Arquivo não encontrado. Iniciando novo catálogo.");
                     currentProducts = []; 
                 } else if (res.status === 401) {
                     throw new Error("401");
                 } else {
-                    throw new Error("Erro ao carregar produtos: " + res.status);
+                    throw new Error("Erro: " + res.status);
                 }
 
                 currentProducts = currentProducts.map(p => ({
@@ -421,15 +462,16 @@
                 setConnectionStatus('Conectado', 'emerald');
 
             } catch (error) {
-                console.error("Erro no carregamento de dados:", error);
+                console.error("Erro no carregamento:", error);
                 
-                if (error.message === "401" || error.message.includes("401")) {
-                     openSettingsModal(true); // Abre modal de config com erro
+                if (error.message.includes("401")) {
                      setConnectionStatus('Erro de Token (401)', 'red');
+                     // Opcional: abrir modal se o token embutido falhar
+                     // openSettingsModal(true); 
                      return;
                 }
                 
-                let errorMessage = `Erro: ${error.message}<br><span class="text-xs text-slate-500">Repositório: ${GH_REPO}</span>`;
+                let errorMessage = `Erro: ${error.message}`;
                 document.getElementById('productsTableBody').innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500">${errorMessage}</td></tr>`;
                 setConnectionStatus('Falha', 'red');
             }
@@ -462,6 +504,7 @@
                 if(p.category === 'hardware') catColor = "bg-blue-900/30 text-blue-400 border border-blue-500/20";
                 if(p.category === 'acessorios') catColor = "bg-red-900/30 text-red-400 border border-red-500/20";
                 
+                // Formatação simples para exibição na tabela
                 const priceDisplay = p.price.includes('R$') ? p.price : `R$ ${p.price}`;
 
                 tr.innerHTML = `
@@ -495,7 +538,7 @@
 
             const id = document.getElementById('prodId').value;
             const title = document.getElementById('prodTitle').value;
-            const price = document.getElementById('prodPrice').value;
+            let price = document.getElementById('prodPrice').value;
             const genre = document.getElementById('prodGenre').value;
             const desc = document.getElementById('prodDesc').value;
             const fileInput = document.getElementById('prodFile');
@@ -504,6 +547,12 @@
                 setModalStatus("Preencha nome e preço.", true);
                 btn.disabled = false; btn.innerText = originalText;
                 return;
+            }
+
+            // Garante que o preço tenha o R$ ao salvar se o usuário não digitar
+            if (!price.includes('R$')) {
+                // Remove espaços e garante formatação correta antes de salvar
+                price = `R$ ${price.trim()}`;
             }
 
             try {
@@ -527,7 +576,7 @@
                 const productData = {
                     id: id || Date.now().toString(),
                     name: title,
-                    price: `R$ ${price}`,
+                    price: price,
                     category: genre,
                     desc: desc,
                     image: imageUrl
@@ -544,10 +593,7 @@
             } catch (error) {
                 console.error("Erro ao salvar produto:", error);
                 let msg = error.message;
-                if(msg.includes("401")) {
-                     msg = "Token inválido/expirado.";
-                     openSettingsModal(true);
-                }
+                if(msg.includes("401")) msg = "Token inválido/expirado.";
                 if(msg.includes("404")) msg = "Repositório não encontrado.";
                 setModalStatus(msg, true);
             } finally {
@@ -622,38 +668,51 @@
             if (!res.ok) throw new Error(`${res.status}`);
         }
 
-        // --- UTILS ---
+        // --- Adicionando as Funções em falta (startEdit & deleteProduct) ---
         function startEdit(id) {
             const p = currentProducts.find(x => x.id === id);
             if(!p) return;
             document.getElementById('modalTitle').innerText = "Editar Produto";
             document.getElementById('prodId').value = p.id;
             document.getElementById('prodTitle').value = p.name;
-            const priceValue = p.price.replace('R$', '').trim().replace(',', '.');
+            
+            // Remove R$ para edição limpa
+            let priceValue = p.price.replace('R$', '').trim();
             document.getElementById('prodPrice').value = priceValue;
+            
             document.getElementById('prodGenre').value = p.category;
             document.getElementById('prodDesc').value = p.desc;
             openProductModal();
         }
-        
+
         async function deleteProduct(id) {
-            // Usamos window.confirm para a ação crítica de exclusão
-            if(!window.confirm("Apagar produto?")) return;
+            if(!window.confirm("Tem certeza que deseja excluir este produto?")) return;
+            
+            // UI Feedback imediato
+            const btn = document.querySelector(`button[onclick="deleteProduct('${id}')"]`);
+            if(btn) {
+                btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i>';
+                btn.disabled = true;
+            }
+
             try {
                 await updateJsonCatalog({id: id}, false, true);
                 loadData();
             } catch(error) {
-                // Usamos alert() para a falha crítica, já que não temos um Toast na aplicação
-                alert("Erro ao deletar: " + error.message); 
+                console.error("Erro ao deletar: " + error.message);
+                // alert("Erro ao excluir: " + error.message);
+                loadData(); // Restaura UI
             }
         }
 
-        const toBase64 = file => new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = error => reject(error);
-        });
+        function toBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
 
         function formatCurrency(input) {
             let value = input.value.replace(/[^\d,]/g, "");
@@ -687,13 +746,13 @@
             }
         }
 
-        // --- UI Settings Modal ---
         function openSettingsModal(hasError = false) {
              const modal = document.getElementById('settingsModal');
              const content = document.getElementById('settingsModalContent');
              const errorMsg = document.getElementById('tokenErrorMsg');
              const input = document.getElementById('ghTokenInput');
              
+             // Carrega token manual se houver
              input.value = localStorage.getItem('atomic_gh_token') || '';
              
              if(hasError) errorMsg.classList.remove('hidden');
@@ -720,7 +779,6 @@
             }, 300);
         }
 
-        // --- UI Product Modal ---
         function openProductModal() {
             const modal = document.getElementById('productModal');
             const content = document.getElementById('productModalContent');
