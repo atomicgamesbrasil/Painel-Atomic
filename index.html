@@ -4,707 +4,601 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Atomic Games - Backoffice</title>
+    
+    <!-- METADATA PARA REDES SOCIAIS (WhatsApp, etc) -->
+    <meta property="og:title" content="Atomic Games - Painel Administrativo">
+    <meta property="og:description" content="Acesso restrito para gestão de loja e produtos.">
+    <meta property="og:image" content="https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/img2.jpeg">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta property="og:type" content="website">
+
+    <!-- FAVICON -->
+    <link rel="icon" type="image/webp" href="https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/atomiclogo.webp">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Importação das fontes */
+        /* Fontes */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Rajdhani:wght@500;700&display=swap');
 
+        /* ---------------------------------------------------- */
+        /* CONFIGURAÇÃO DE TEMAS E HARMONIA VISUAL             */
+        /* ---------------------------------------------------- */
+
         body {
-            background-color: #0f172a;
-            color: #f1f5f9;
             font-family: 'Inter', sans-serif;
+            transition: background-image 0.5s ease, background-color 0.5s ease;
+            color: #f1f5f9;
         }
+
+        /* --- MODO PADRÃO (DARK / SÓLIDO) --- */
+        /* Foco total no trabalho, sem distrações de fundo */
+        body[data-theme="dark"] {
+            background-color: #0f172a; /* Slate 900 */
+            background-image: none;
+        }
+        
+        body[data-theme="dark"] .glass-panel,
+        body[data-theme="dark"] aside,
+        body[data-theme="dark"] nav,
+        body[data-theme="dark"] .content-area {
+            background-color: #0f172a; /* Sólido */
+            border-color: #1e293b;
+        }
+
+        /* --- MODO VISUALIZAÇÃO (IMAGEM + HARMONIA) --- */
+        /* Imagem de fundo presente, mas o conteúdo flutua em blocos quase sólidos para legibilidade */
+        body[data-theme="light"] {
+            /* Imagem 1 no fundo */
+            background-image: url('https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/img1.jpeg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+
+        /* Ajuste de Harmonia: Painéis escuros e quase opacos sobre a imagem */
+        body[data-theme="light"] .glass-panel,
+        body[data-theme="light"] aside,
+        body[data-theme="light"] nav,
+        body[data-theme="light"] .content-area {
+            background: rgba(11, 17, 32, 0.92); /* Muito escuro e quase sólido (92%) */
+            backdrop-filter: blur(8px);         /* Leve desfoque no que está atrás */
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.08); /* Borda sutil para separar da imagem */
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Navbar no modo imagem fica um pouco mais translúcida para estilo */
+        body[data-theme="light"] nav {
+            background: rgba(11, 17, 32, 0.95);
+        }
+
+        /* --- TELA DE LOGIN (MÁSCARA COM IMAGEM 2) --- */
+        #authOverlay {
+            /* Imagem 2 no fundo do login */
+            background-image: url('https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/img2.jpeg');
+            background-size: cover;
+            background-position: center;
+            position: absolute;
+            inset: 0;
+            z-index: 100;
+        }
+        
+        #authOverlay::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.65); /* Máscara escura para ler o login */
+            backdrop-filter: blur(4px);
+            z-index: 101;
+        }
+        
+        #authBox {
+            position: relative;
+            z-index: 102;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        /* --- SWITCH (INTERRUPTOR) CUSTOMIZADO --- */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #eab308; /* Yellow-500 */
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #eab308; /* Yellow-500 */
+        }
+        
+        /* ---------------------------------------------------- */
+        
         h1, h2, h3 { font-family: 'Rajdhani', sans-serif; }
-        
-        .atomic-yellow-text { color: #FFD700; }
-        
-        .glass-panel {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 215, 0, 0.1);
-        }
-        
         .custom-scroll::-webkit-scrollbar { width: 8px; }
-        .custom-scroll::-webkit-scrollbar-track { background: #1e293b; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #FFD700; }
         
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
         @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin-slow { animation: spin-slow 10s linear infinite; }
         
-        .hidden-screen { display: none !important; }
-
-        /* Ajuste para o modal na visualização */
-        .modal-enter-active {
-            transition: opacity 0.3s;
-        }
-        .modal-enter-from, .modal-leave-to {
-            opacity: 0;
-        }
-        .modal-content-enter-active, .modal-content-leave-active {
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .modal-content-enter-from, .modal-content-leave-to {
-            transform: scale(0.95);
-            opacity: 0;
-        }
+        .modal-enter-active { transition: opacity 0.3s; }
+        .modal-enter-from, .modal-leave-to { opacity: 0; }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="h-screen flex flex-col overflow-hidden" data-theme="dark">
 
     <!-- NAVBAR -->
-    <nav class="bg-slate-900 border-b border-slate-700 h-16 flex items-center justify-between px-6 shadow-lg z-10">
+    <nav class="border-b border-slate-700 h-16 flex items-center justify-between px-6 shadow-lg z-20 transition-colors">
         <div class="flex items-center gap-3">
-            <!-- ALTERADO: Substituído o SVG pelo logo da Atomic Games -->
             <img src="https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/atomiclogo.webp" 
                  onerror="this.src='https://placehold.co/100?text=A'"
-                 alt="Logo Atomic Games"
-                 class="h-8 w-8 rounded-full animate-spin-slow bg-black ring-2 ring-yellow-400/50">
-            <!-- FIM DA ALTERAÇÃO -->
+                 alt="Logo Atomic"
+                 class="h-9 w-9 rounded-full animate-spin-slow bg-black ring-2 ring-yellow-400/50">
             <h1 class="text-3xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
-                ATOMIC ADMIN <span class="text-slate-500 text-sm font-normal hidden sm:inline">| GitHub Edition</span>
+                ATOMIC ADMIN
             </h1>
         </div>
-        <div class="flex items-center gap-4">
-            <div id="connectionStatus" class="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 text-xs border border-slate-700">
-                <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse" id="statusDot"></div>
-                <span class="text-slate-400" id="statusText">Desconectado</span>
+        
+        <div class="flex items-center gap-6">
+            <!-- INTERRUPTOR DE TEMA -->
+            <div class="flex items-center gap-3 cursor-pointer group" onclick="toggleTheme()">
+                <span class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider group-hover:text-yellow-400 transition-colors">
+                    Mudar modo de visualização
+                </span>
+                <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                    <input type="checkbox" name="toggle" id="themeToggleCheckbox" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-slate-700 appearance-none cursor-pointer transition-all duration-300 left-0" style="top: -2px;"/>
+                    <label for="toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-slate-700 cursor-pointer transition-colors duration-300"></label>
+                </div>
             </div>
-            <button id="btnLogout" onclick="logout()" class="hidden text-slate-400 hover:text-yellow-400 transition-colors" title="Sair">
-                <i class="fa-solid fa-power-off"></i>
+
+            <div class="h-6 w-px bg-slate-700 mx-2"></div>
+
+            <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/50 text-xs border border-slate-700">
+                <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse" id="statusDot"></div>
+                <span class="text-slate-400 font-semibold" id="statusText">Off</span>
+            </div>
+            
+            <button id="btnLogout" onclick="logout()" class="hidden text-slate-400 hover:text-red-500 transition-colors" title="Sair">
+                <i class="fa-solid fa-power-off text-lg"></i>
             </button>
         </div>
     </nav>
 
-    <!-- MAIN CONTENT -->
+    <!-- LAYOUT PRINCIPAL -->
     <main class="flex-1 flex overflow-hidden relative">
         
         <!-- SIDEBAR -->
-        <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col hidden md:flex transition-all">
+        <aside class="w-64 border-r border-slate-800 flex flex-col hidden md:flex transition-all z-10">
             <div class="p-4">
-                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Gestão de Loja</p>
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Navegação</p>
                 <nav class="space-y-1">
-                    <button onclick="showSection('dashboard')" id="nav-dashboard" class="nav-item w-full text-left px-4 py-3 rounded-lg bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20 transition-all flex items-center gap-3">
+                    <button onclick="showSection('dashboard')" id="nav-dashboard" class="nav-item w-full text-left px-4 py-3 rounded-lg bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 flex items-center gap-3 font-medium">
                         <i class="fa-solid fa-chart-line w-5"></i> Dashboard
                     </button>
-                    <button onclick="showSection('products')" id="nav-products" class="nav-item w-full text-left px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-all flex items-center gap-3">
-                        <i class="fa-solid fa-box-open w-5"></i> Produtos / Jogos
+                    <button onclick="showSection('products')" id="nav-products" class="nav-item w-full text-left px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-white transition-all flex items-center gap-3 font-medium">
+                        <i class="fa-solid fa-box-open w-5"></i> Produtos
                     </button>
                 </nav>
             </div>
             
-            <div class="mt-auto p-4 border-t border-slate-800 bg-slate-900/50">
-                <!-- Botão de Configurar Token removido/escondido já que está embutido, mas mantendo função caso precise forçar um override no futuro (pode descomentar se quiser) -->
-                <button onclick="openSettingsModal()" class="w-full mb-4 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-colors flex items-center gap-2 justify-center border border-slate-700 opacity-50 hover:opacity-100">
-                    <i class="fa-solid fa-gear"></i> Token (Sistema)
-                </button>
-                <div class="flex items-center gap-3">
+            <div class="mt-auto p-4 border-t border-slate-800">
+                <div class="flex items-center gap-3 p-2 rounded-lg bg-slate-800/30 border border-slate-700/50">
                     <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-500 to-orange-600 flex items-center justify-center text-xs font-bold shadow-lg text-black">A</div>
                     <div>
-                        <p class="text-sm font-medium text-white">Master Admin</p>
-                        <p class="text-xs text-slate-500">Conectado ao GitHub</p>
+                        <p class="text-sm font-bold text-white leading-tight">Master Admin</p>
+                        <p class="text-[10px] text-emerald-500 font-mono">● Conectado</p>
                     </div>
                 </div>
             </div>
         </aside>
 
-        <!-- CONTENT AREA -->
-        <div class="flex-1 bg-slate-950 p-6 overflow-auto custom-scroll relative">
+        <!-- ÁREA DE CONTEÚDO -->
+        <div class="content-area flex-1 p-6 overflow-auto custom-scroll relative z-0">
             
-            <!-- AUTH OVERLAY (Login) -->
-            <div id="authOverlay" class="absolute inset-0 z-50 bg-slate-950 flex items-center justify-center">
-                <div class="w-full max-w-md p-8 glass-panel rounded-2xl shadow-2xl border border-slate-700 relative overflow-hidden">
-                    <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-full h-2 bg-gradient-to-r from-transparent via-yellow-500 to-transparent opacity-50"></div>
+            <!-- TELA DE LOGIN (OVERLAY) -->
+            <div id="authOverlay" class="flex items-center justify-center">
+                <div id="authBox" class="w-full max-w-md p-8 rounded-2xl shadow-2xl relative">
+                    <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent"></div>
                     
                     <div class="text-center mb-8">
-                        <div class="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 border border-yellow-700 shadow-inner">
-                            <i class="fa-solid fa-lock text-2xl text-yellow-500"></i>
+                        <div class="w-20 h-20 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-5 border-2 border-yellow-500/30 shadow-2xl">
+                            <i class="fa-solid fa-shield-halved text-3xl text-yellow-500"></i>
                         </div>
-                        <h2 class="text-2xl font-bold text-white">Acesso Administrativo</h2>
-                        <p class="text-slate-400 text-sm mt-2">Login seguro para gestão da loja.</p>
+                        <h2 class="text-3xl font-bold text-white">Acesso Restrito</h2>
+                        <p class="text-slate-400 text-sm mt-1">Painel Administrativo Atomic Games</p>
                     </div>
 
-                    <form onsubmit="handleLogin(event)" class="space-y-4">
-                        <div>
-                            <label class="block text-xs text-slate-500 uppercase font-bold ml-1">Senha de Acesso</label>
-                            <div class="relative">
-                                <i class="fa-solid fa-key absolute left-3 top-3.5 text-slate-500"></i>
-                                <input type="password" id="loginPassword" placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-lg py-3 pl-10 pr-10 text-white focus:outline-none focus:border-yellow-500 transition-colors placeholder-slate-600">
-                                <!-- Botão para mostrar/esconder senha -->
-                                <button type="button" onclick="togglePasswordVisibility('loginPassword', 'toggleIcon')" class="absolute right-3 top-3.5 text-slate-500 hover:text-yellow-500 transition-colors" aria-label="Mostrar/Esconder Senha">
-                                    <i id="toggleIcon" class="fa-solid fa-eye"></i>
-                                </button>
-                            </div>
+                    <form onsubmit="handleLogin(event)" class="space-y-5">
+                        <div class="relative group">
+                            <i class="fa-solid fa-key absolute left-3 top-3.5 text-slate-500 group-focus-within:text-yellow-500 transition-colors"></i>
+                            <input type="password" id="loginPassword" placeholder="Senha do Sistema" class="w-full bg-slate-950/50 border border-slate-700 rounded-lg py-3 pl-10 pr-10 text-white focus:outline-none focus:border-yellow-500 transition-colors placeholder-slate-600">
+                            <button type="button" onclick="togglePass()" class="absolute right-3 top-3.5 text-slate-500 hover:text-white transition-colors">
+                                <i id="toggleIcon" class="fa-solid fa-eye"></i>
+                            </button>
                         </div>
-                        <button type="submit" class="w-full mt-6 py-3 px-4 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black rounded-lg font-bold shadow-lg shadow-yellow-900/30 transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2">
-                            <span>Entrar no Sistema</span>
-                            <i class="fa-solid fa-arrow-right"></i>
+                        <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-400 hover:to-orange-500 text-black font-bold rounded-lg shadow-lg transition-all transform active:scale-[0.98] uppercase tracking-wide text-sm">
+                            <i class="fa-solid fa-right-to-bracket mr-2"></i> Entrar no Sistema
                         </button>
                     </form>
-                    <p id="loginMsg" class="text-center text-xs text-red-500 mt-4 h-4 font-mono hidden"></p>
+                    <p id="loginMsg" class="text-center text-xs text-red-400 mt-4 h-4 font-bold hidden bg-red-500/10 py-1 rounded border border-red-500/20"></p>
                 </div>
             </div>
 
-            <!-- DASHBOARD SECTION -->
+            <!-- DASHBOARD -->
             <div id="section-dashboard" class="space-y-6 fade-in">
-                <header>
-                    <h2 class="text-3xl font-bold text-white">Visão Geral</h2>
-                    <p class="text-slate-400">Métricas do repositório <span class="text-yellow-500">atomicgamesbrasil</span>.</p>
+                <header class="mb-8">
+                    <h2 class="text-4xl font-bold text-white mb-2">Dashboard</h2>
+                    <p class="text-slate-400">Visão geral do sistema e métricas.</p>
                 </header>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="glass-panel p-6 rounded-xl border-l-4 border-yellow-500 relative overflow-hidden group">
-                        <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                            <i class="fa-solid fa-box text-8xl text-yellow-500"></i>
+                    <div class="glass-panel p-6 rounded-2xl border-l-4 border-yellow-500 relative overflow-hidden group">
+                        <div class="absolute right-[-10px] top-[-10px] opacity-[0.05] group-hover:opacity-[0.1] transition-opacity transform group-hover:scale-110 duration-500">
+                            <i class="fa-solid fa-gamepad text-9xl text-white"></i>
                         </div>
-                        <p class="text-slate-400 text-sm font-bold uppercase">Produtos na Loja</p>
-                        <h3 id="statTotalProducts" class="text-4xl font-bold text-white mt-2">-</h3>
+                        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Total de Produtos</p>
+                        <h3 id="statTotalProducts" class="text-5xl font-bold text-white mt-2 drop-shadow-lg">-</h3>
                     </div>
                     
-                    <div class="glass-panel p-6 rounded-xl border-l-4 border-emerald-500 relative overflow-hidden group">
-                        <p class="text-slate-400 text-sm font-bold uppercase">Estado do Sistema</p>
-                        <div class="flex items-center gap-2 mt-3">
-                            <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
-                            <h3 class="text-2xl font-bold text-white">Online</h3>
+                    <div class="glass-panel p-6 rounded-2xl border-l-4 border-emerald-500 relative overflow-hidden">
+                        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Status da API</p>
+                        <div class="flex items-center gap-3 mt-3">
+                            <span class="relative flex h-3 w-3">
+                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                            </span>
+                            <h3 class="text-2xl font-bold text-white">Operacional</h3>
                         </div>
-                        <p class="text-xs text-emerald-500/70 mt-1">Conectado ao GitHub</p>
+                        <p class="text-[10px] text-slate-500 mt-2 font-mono">GitHub API v3: Connected</p>
                     </div>
                 </div>
             </div>
 
-            <!-- PRODUCTS SECTION -->
+            <!-- PRODUTOS -->
             <div id="section-products" class="hidden space-y-6 fade-in">
-                <header class="flex flex-col md:flex-row justify-between md:items-end gap-4">
+                <header class="flex flex-col md:flex-row justify-between md:items-end gap-4 pb-4 border-b border-slate-700/50">
                     <div>
-                        <h2 class="text-3xl font-bold text-white">Gestão de Produtos</h2>
-                        <p class="text-slate-400">Adicione ou edite os itens que aparecem no site.</p>
+                        <h2 class="text-3xl font-bold text-white">Catálogo</h2>
+                        <p class="text-slate-400">Gerenciamento de estoque e itens do site.</p>
                     </div>
-                    <button onclick="openProductModal()" class="bg-yellow-500 hover:bg-orange-500 text-black px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-yellow-900/20 flex items-center gap-2">
-                        <i class="fa-solid fa-plus"></i> Novo Produto
+                    <button onclick="openProductModal()" class="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black px-6 py-3 rounded-lg font-bold shadow-lg transition-all transform hover:-translate-y-1 flex items-center gap-2">
+                        <i class="fa-solid fa-plus-circle"></i> Novo Produto
                     </button>
                 </header>
 
-                <!-- Product List -->
-                <div class="glass-panel rounded-xl overflow-hidden border border-slate-800">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-slate-900/80 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700">
-                                    <th class="p-4 font-bold">Imagem</th>
-                                    <th class="p-4 font-bold">Nome</th>
-                                    <th class="p-4 font-bold">Categoria</th>
-                                    <th class="p-4 font-bold">Preço</th>
-                                    <th class="p-4 font-bold text-right">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="productsTableBody" class="text-sm divide-y divide-slate-800/50">
-                                <tr><td colspan="5" class="p-8 text-center text-slate-500">A carregar produtos...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="glass-panel rounded-xl overflow-hidden border border-slate-700/50 shadow-xl">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-900/80 text-slate-400 text-xs uppercase tracking-wider">
+                            <tr>
+                                <th class="p-5 font-bold">Item</th>
+                                <th class="p-5 font-bold">Nome</th>
+                                <th class="p-5 font-bold">Categoria</th>
+                                <th class="p-5 font-bold">Preço</th>
+                                <th class="p-5 font-bold text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productsTableBody" class="text-sm divide-y divide-slate-700/30">
+                            <!-- JS preenche aqui -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
+
         </div>
     </main>
 
-    <!-- MODAL: ADD/EDIT PRODUCT -->
-    <div id="productModal" class="fixed inset-0 z-[60] bg-black/80 hidden items-center justify-center backdrop-blur-sm transition-opacity modal-enter-active" >
-        <div class="glass-panel w-full max-w-lg p-0 rounded-2xl border border-slate-700 shadow-2xl transform flex flex-col max-h-[90vh]" id="productModalContent">
-            
-            <div class="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
-                <h3 class="text-xl font-bold text-white" id="modalTitle">Adicionar Produto</h3>
-                <button onclick="closeProductModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+    <!-- MODAL PRODUTO -->
+    <div id="productModal" class="fixed inset-0 z-[60] bg-black/80 hidden items-center justify-center backdrop-blur-sm transition-opacity opacity-0">
+        <div class="glass-panel w-full max-w-lg rounded-2xl border border-slate-700 shadow-2xl flex flex-col max-h-[90vh] transform scale-95 transition-transform" id="productModalContent">
+            <div class="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900/80 rounded-t-2xl">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-yellow-500"></i> <span id="modalTitle">Gerenciar Produto</span>
+                </h3>
+                <button onclick="closeProductModal()" class="text-slate-400 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             
-            <form id="addProductForm" class="p-6 space-y-4 overflow-y-auto custom-scroll">
-                <input type="hidden" id="prodId"> <!-- ID oculto para edição -->
-
-                <div class="grid grid-cols-2 gap-4">
+            <form id="addProductForm" class="p-6 space-y-4 overflow-y-auto custom-scroll bg-slate-900/40">
+                <input type="hidden" id="prodId">
+                <div class="grid grid-cols-2 gap-5">
                     <div class="col-span-2">
-                        <label class="block text-xs font-bold text-slate-400 mb-1">Nome do Produto</label>
-                        <input type="text" id="prodTitle" required class="w-full bg-slate-800 border border-slate-600 rounded p-2.5 text-white focus:border-yellow-500 outline-none">
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">Nome do Produto</label>
+                        <input type="text" id="prodTitle" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-white focus:border-yellow-500 outline-none transition-colors">
                     </div>
-                    
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-1">Preço</label>
-                        <!-- ATUALIZADO: CAMPO COM R$ FIXO -->
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">Preço (R$)</label>
                         <div class="relative">
-                            <span class="absolute left-3 top-2.5 text-yellow-500 font-bold font-mono">R$</span>
-                            <input type="text" id="prodPrice" required placeholder="0,00" oninput="formatCurrency(this)" class="w-full bg-slate-800 border border-slate-600 rounded p-2.5 pl-10 text-white focus:border-yellow-500 outline-none font-mono">
+                            <span class="absolute left-3 top-3 text-slate-500">R$</span>
+                            <input type="text" id="prodPrice" placeholder="0,00" oninput="formatCurrency(this)" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 pl-9 text-white outline-none focus:border-yellow-500 font-mono">
                         </div>
                     </div>
-                    
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-1">Categoria</label>
-                        <select id="prodGenre" class="w-full bg-slate-800 border border-slate-600 rounded p-2.5 text-white focus:border-yellow-500 outline-none">
-                            <option value="console">Console</option>
-                            <option value="games">Jogo</option>
-                            <option value="acessorios">Acessório</option>
-                            <option value="hardware">Hardware / PC</option>
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">Categoria</label>
+                        <select id="prodGenre" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-white outline-none focus:border-yellow-500 cursor-pointer">
+                            <option value="games">Jogos</option>
+                            <option value="console">Consoles</option>
+                            <option value="acessorios">Acessórios</option>
+                            <option value="hardware">Hardware</option>
                         </select>
                     </div>
-
                     <div class="col-span-2">
-                        <label class="block text-xs font-bold text-slate-400 mb-1">Imagem do Produto</label>
-                        <input type="file" id="prodFile" accept="image/*" class="block w-full text-sm text-slate-300
-                            file:mr-4 file:py-2 file:px-4
-                            file:rounded-full file:border-0
-                            file:text-sm file:font-semibold
-                            file:bg-yellow-500/80 file:text-black
-                            hover:file:bg-yellow-500 transition-colors cursor-pointer
-                        ">
-                        <p class="text-[10px] text-slate-500 mt-1">Deixe vazio para manter a imagem atual (em edição).</p>
-                        <p id="prodModalStatus" class="text-xs text-yellow-400 mt-2 hidden"></p>
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">Imagem</label>
+                        <label class="flex items-center gap-3 w-full bg-slate-800 border border-slate-600 border-dashed rounded-lg p-3 cursor-pointer hover:bg-slate-700 hover:border-yellow-500 transition-all group">
+                            <div class="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center group-hover:bg-yellow-500 group-hover:text-black transition-colors">
+                                <i class="fa-solid fa-cloud-arrow-up text-yellow-500 group-hover:text-black"></i>
+                            </div>
+                            <span class="text-sm text-slate-400 group-hover:text-white">Clique para selecionar imagem...</span>
+                            <input type="file" id="prodFile" accept="image/*" class="hidden">
+                        </label>
                     </div>
-
                     <div class="col-span-2">
-                        <label class="block text-xs font-bold text-slate-400 mb-1">Descrição Curta</label>
-                        <textarea id="prodDesc" rows="3" class="w-full bg-slate-800 border border-slate-600 rounded p-2.5 text-white focus:border-yellow-500 outline-none text-sm"></textarea>
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">Descrição Curta</label>
+                        <textarea id="prodDesc" rows="3" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-white outline-none focus:border-yellow-500 resize-none text-sm"></textarea>
                     </div>
                 </div>
+                <p id="prodModalStatus" class="text-center text-xs font-bold text-yellow-400 hidden mt-2 animate-pulse"></p>
             </form>
 
-            <div class="p-4 border-t border-slate-700 bg-slate-900/50 flex justify-end gap-3">
-                <button type="button" onclick="closeProductModal()" class="px-4 py-2 text-sm text-slate-300 hover:text-white font-medium">Cancelar</button>
-                <button type="button" onclick="submitProductForm()" id="btnSaveProduct" class="px-6 py-2 bg-yellow-500 hover:bg-orange-500 text-black text-sm font-bold rounded shadow-lg transition-colors">Salvar</button>
+            <div class="p-5 border-t border-slate-700 bg-slate-900/80 flex justify-end gap-3 rounded-b-2xl">
+                <button type="button" onclick="closeProductModal()" class="px-5 py-2.5 text-sm font-bold text-slate-400 hover:text-white transition-colors">Cancelar</button>
+                <button type="button" onclick="submitProductForm()" id="btnSaveProduct" class="px-8 py-2.5 bg-yellow-500 text-black font-bold rounded-lg shadow-lg hover:bg-orange-500 transition-colors">Salvar Produto</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL: SETTINGS (TOKEN) -->
-    <div id="settingsModal" class="fixed inset-0 z-[70] bg-black/80 hidden items-center justify-center backdrop-blur-sm transition-opacity modal-enter-active">
-        <div class="glass-panel w-full max-w-md p-0 rounded-2xl border border-slate-700 shadow-2xl transform flex flex-col" id="settingsModalContent">
-            <div class="p-6 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
-                <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-gear text-yellow-500 mr-2"></i> Configuração</h3>
-                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
-            </div>
-            <div class="p-6 space-y-4">
-                <div class="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-200 hidden" id="tokenErrorMsg">
-                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> Erro de autenticação (401).
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1">GitHub Token (Override)</label>
-                    <input type="password" id="ghTokenInput" placeholder="ghp_..." class="w-full bg-slate-800 border border-slate-600 rounded p-2.5 text-white focus:border-yellow-500 outline-none font-mono text-sm">
-                    <p class="text-[10px] text-slate-500 mt-2">
-                        O sistema já possui um token embutido. Use este campo apenas se precisar sobrescrevê-lo.
-                    </p>
-                </div>
-            </div>
-            <div class="p-4 border-t border-slate-700 bg-slate-900/50 flex justify-end gap-3">
-                <button onclick="closeSettingsModal()" class="px-4 py-2 text-sm text-slate-300 hover:text-white font-medium">Fechar</button>
-                <button onclick="saveToken()" class="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold rounded shadow-lg transition-colors">Salvar Token</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- LOGICA DO SISTEMA (GitHub API) -->
+    <!-- SCRIPT LOGIC -->
     <script>
-        // CONFIGURAÇÕES ATUALIZADAS
+        // CONFIG
         const APP_PASSWORD = "atomic-master";
         const GH_REPO = "atomicgamesbrasil/siteoficial";
-        
-        // TOKEN EMBUTIDO (PARCIAL)
         const EMBEDDED_TOKEN_PART = "XnBgEWSOFOv1SGfvtLCktpZqrdJ2SV1XoDT5";
         
         let currentProducts = [];
-        let productToEdit = null;
 
-        function togglePasswordVisibility(inputId, iconId) {
-            const input = document.getElementById(inputId);
-            const icon = document.getElementById(iconId);
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.classList.replace('fa-eye', 'fa-eye-slash');
+        // --- LÓGICA DE TEMA (BACKGROUND & SWITCH) ---
+        function applyTheme(theme) {
+            document.body.setAttribute('data-theme', theme);
+            localStorage.setItem('atomic_theme', theme);
+            
+            const checkbox = document.getElementById('themeToggleCheckbox');
+            
+            if (theme === 'light') {
+                checkbox.checked = true; // Switch ligado (Modo Imagem)
+                // Estilos "Light Mode" já tratados no CSS para manter harmonia
             } else {
-                input.type = 'password';
-                icon.classList.replace('fa-eye-slash', 'fa-eye');
+                checkbox.checked = false; // Switch desligado (Modo Dark/Padrão)
             }
         }
 
-        /**
-         * LÓGICA DE SEGURANÇA DO TOKEN
-         * Prioridade: 
-         * 1. Token salvo manualmente no localStorage (Override)
-         * 2. Token embutido no código
-         */
-        function getRealToken() {
-            // Verifica se o usuário configurou um token manual (Override)
-            let localToken = localStorage.getItem('atomic_gh_token');
-            if (localToken && localToken.length > 10) {
-                if (!localToken.startsWith('ghp_')) {
-                    return 'ghp_' + localToken.trim();
-                }
-                return localToken.trim();
-            }
-
-            // Se não houver override, usa o token embutido
-            return 'ghp_' + EMBEDDED_TOKEN_PART;
-        }
-
-        // Salva token manual (caso o usuário queira trocar a chave sem mexer no código)
-        function saveToken() {
-            let token = document.getElementById('ghTokenInput').value.trim();
-            if(!token) {
-                // Se salvar vazio, limpa o override e volta a usar o embutido
-                localStorage.removeItem('atomic_gh_token');
-                closeSettingsModal();
-                loadData();
-                return;
-            }
-
-            if (token.toLowerCase().startsWith('ghp_')) {
-                token = token.substring(4);
-            }
-
-            localStorage.setItem('atomic_gh_token', token);
-            document.getElementById('tokenErrorMsg').classList.add('hidden');
-            closeSettingsModal();
-            loadData();
-            console.log("Token manual salvo.");
-        }
-
-        // --- INICIALIZAÇÃO ---
-        function initApp() {
-            if (sessionStorage.getItem('atomic_auth') === 'true') {
-                handleLoginSuccess();
-            } else {
-                handleLogout(); 
-            }
+        function toggleTheme() {
+            const current = document.body.getAttribute('data-theme');
+            applyTheme(current === 'dark' ? 'light' : 'dark');
         }
 
         // --- AUTH ---
         function handleLogin(e) {
             e.preventDefault();
             const pass = document.getElementById('loginPassword').value;
-            if (pass === APP_PASSWORD) {
-                sessionStorage.setItem('atomic_auth', 'true');
-                handleLoginSuccess();
-            } else {
-                const msg = document.getElementById('loginMsg');
-                msg.innerText = "Senha incorreta.";
-                msg.classList.remove('hidden');
-            }
+            const btn = e.target.querySelector('button[type="submit"]');
+            
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Verificando...';
+            
+            setTimeout(() => {
+                if (pass === APP_PASSWORD) {
+                    sessionStorage.setItem('atomic_auth', 'true');
+                    loginSuccess();
+                } else {
+                    const msg = document.getElementById('loginMsg');
+                    msg.innerText = "Senha Incorreta. Tente novamente.";
+                    msg.classList.remove('hidden');
+                    btn.innerHTML = '<i class="fa-solid fa-right-to-bracket mr-2"></i> Entrar no Sistema';
+                }
+            }, 800);
         }
 
-        function handleLoginSuccess() {
+        function loginSuccess() {
+            // Esconde a tela de login (que tem a img2)
             document.getElementById('authOverlay').classList.add('hidden');
             document.getElementById('btnLogout').classList.remove('hidden');
             
-            const statusDot = document.getElementById('statusDot');
-            const statusText = document.getElementById('statusText');
-            statusDot.classList.replace('bg-red-500', 'bg-emerald-500');
-            statusText.innerText = "Conectado";
+            // Ativa o Modo Imagem (Light) automaticamente ao logar
+            applyTheme('light');
             
-            // Tenta carregar dados imediatamente usando o token embutido
+            document.getElementById('statusDot').className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+            document.getElementById('statusText').innerText = "Online";
+            document.getElementById('statusText').className = "text-emerald-400 font-bold text-xs";
             loadData();
-            showSection('dashboard');
         }
 
-        function handleLogout() {
-            sessionStorage.removeItem('atomic_auth');
-            if (!document.getElementById('authOverlay').classList.contains('hidden')) return;
-            location.reload();
-        }
-        
-        function logout() { 
-            if (window.confirm("Tem certeza que deseja sair do Painel Admin?")) {
-                handleLogout(); 
+        function logout() {
+            if(confirm("Deseja desconectar do painel?")) {
+                sessionStorage.removeItem('atomic_auth');
+                location.reload();
             }
         }
 
-        // --- CARREGAMENTO DE DADOS ---
-        async function loadData() {
-            setConnectionStatus('Conectando...', 'yellow');
-            try {
-                const token = getRealToken();
-                // O token sempre existirá agora por causa do EMBEDDED_TOKEN_PART
+        // --- DADOS ---
+        function getRealToken() {
+            let localToken = localStorage.getItem('atomic_gh_token');
+            if (localToken) return localToken.startsWith('ghp_') ? localToken : 'ghp_' + localToken;
+            return 'ghp_' + EMBEDDED_TOKEN_PART;
+        }
 
+        async function loadData() {
+            try {
                 const res = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/produtos.json`, {
-                    headers: { 'Authorization': `token ${token}` }
+                    headers: { 'Authorization': `token ${getRealToken()}` }
                 });
-                
                 if (res.ok) {
                     const data = await res.json();
                     const content = decodeURIComponent(escape(atob(data.content)));
-                    
-                    if (content && content.trim().length > 0) {
-                        currentProducts = JSON.parse(content);
-                    } else {
-                        console.warn("Arquivo vazio. Iniciando lista vazia.");
-                        currentProducts = [];
-                    }
-                } else if (res.status === 404) {
-                    console.log("Arquivo não encontrado. Iniciando novo catálogo.");
-                    currentProducts = []; 
-                } else if (res.status === 401) {
-                    throw new Error("401");
+                    currentProducts = JSON.parse(content);
                 } else {
-                    throw new Error("Erro: " + res.status);
+                    currentProducts = [];
                 }
-
-                currentProducts = currentProducts.map(p => ({
-                    ...p,
-                    id: p.id ? p.id.toString() : Date.now().toString(),
-                    name: p.name || '[Sem Nome]',
-                    price: p.price || '0,00',
-                    category: p.category || 'games',
-                    image: p.image || ''
-                }));
-
                 renderProducts(currentProducts);
                 document.getElementById('statTotalProducts').innerText = currentProducts.length;
-
-                setConnectionStatus('Conectado', 'emerald');
-
-            } catch (error) {
-                console.error("Erro no carregamento:", error);
-                
-                if (error.message.includes("401")) {
-                     setConnectionStatus('Erro de Token (401)', 'red');
-                     // Opcional: abrir modal se o token embutido falhar
-                     // openSettingsModal(true); 
-                     return;
-                }
-                
-                let errorMessage = `Erro: ${error.message}`;
-                document.getElementById('productsTableBody').innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500">${errorMessage}</td></tr>`;
-                setConnectionStatus('Falha', 'red');
+            } catch (e) {
+                console.error(e);
+                document.getElementById('productsTableBody').innerHTML = '<tr><td colspan="5" class="p-6 text-center text-red-400 bg-red-500/10 rounded-lg m-4"><i class="fa-solid fa-wifi mr-2"></i> Erro de Conexão com GitHub</td></tr>';
             }
         }
 
-        function setConnectionStatus(text, color) {
-            const statusDot = document.getElementById('statusDot');
-            const statusText = document.getElementById('statusText');
-            statusDot.className = `w-2 h-2 rounded-full bg-${color}-500 animate-pulse`;
-            statusText.innerText = text;
-        }
-
-        // --- RENDERIZAÇÃO ---
-        function renderProducts(products) {
+        function renderProducts(list) {
             const tbody = document.getElementById('productsTableBody');
             tbody.innerHTML = '';
-            
-            if(products.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-500">Nenhum produto cadastrado neste repositório.</td></tr>';
+            if(list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-500 italic">Nenhum produto encontrado.</td></tr>';
                 return;
             }
-
-            products.forEach(p => {
+            list.forEach(p => {
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-800/30 transition-colors border-b border-slate-800/50";
+                tr.className = "hover:bg-slate-800/50 border-b border-slate-700/30 transition-colors group";
                 
-                let catColor = "bg-slate-700 text-slate-300";
-                if(p.category === 'console') catColor = "bg-purple-900/30 text-purple-400 border border-purple-500/20";
-                if(p.category === 'games') catColor = "bg-green-900/30 text-green-400 border border-green-500/20";
-                if(p.category === 'hardware') catColor = "bg-blue-900/30 text-blue-400 border border-blue-500/20";
-                if(p.category === 'acessorios') catColor = "bg-red-900/30 text-red-400 border border-red-500/20";
-                
-                // Formatação simples para exibição na tabela
-                const priceDisplay = p.price.includes('R$') ? p.price : `R$ ${p.price}`;
+                let catBadge = "bg-slate-800 text-slate-400";
+                if(p.category === 'console') catBadge = "bg-purple-500/20 text-purple-300 border border-purple-500/30";
+                if(p.category === 'games') catBadge = "bg-green-500/20 text-green-300 border border-green-500/30";
+                if(p.category === 'acessorios') catBadge = "bg-blue-500/20 text-blue-300 border border-blue-500/30";
+                if(p.category === 'hardware') catBadge = "bg-red-500/20 text-red-300 border border-red-500/30";
 
                 tr.innerHTML = `
-                    <td class="p-4">
-                        <div class="w-12 h-12 rounded bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden">
-                            <img src="${p.image || 'https://placehold.co/100x100/0f172a/FFD700?text=IMG'}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://placehold.co/100x100/0f172a/FFD700?text=IMG';">
+                    <td class="p-4 pl-5">
+                        <div class="w-12 h-12 rounded-lg bg-slate-950 border border-slate-700 overflow-hidden flex items-center justify-center shadow-sm">
+                            <img src="${p.image || '#'}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/100/1e293b/475569?text=IMG'">
                         </div>
                     </td>
-                    <td class="p-4 font-medium text-white">${p.name}</td>
-                    <td class="p-4"><span class="px-2 py-1 rounded text-xs uppercase font-bold tracking-wider ${catColor}">${p.category}</span></td>
-                    <td class="p-4 text-emerald-400 font-mono">${priceDisplay}</td>
-                    <td class="p-4 text-right flex gap-2 justify-end">
-                        <button onclick="startEdit('${p.id}')" class="text-slate-500 hover:text-yellow-500 transition-colors p-2 hover:bg-yellow-500/10 rounded" title="Editar">
-                            <i class="fa-solid fa-pen"></i>
-                        </button>
-                        <button onclick="deleteProduct('${p.id}')" class="text-slate-500 hover:text-red-500 transition-colors p-2 hover:bg-red-500/10 rounded" title="Excluir">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
+                    <td class="p-4 font-bold text-white group-hover:text-yellow-400 transition-colors">${p.name}</td>
+                    <td class="p-4"><span class="px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${catBadge}">${p.category}</span></td>
+                    <td class="p-4 text-emerald-400 font-mono font-bold tracking-tight">${p.price}</td>
+                    <td class="p-4 pr-5 text-right">
+                        <button onclick="startEdit('${p.id}')" class="text-slate-500 hover:text-yellow-400 p-2 rounded hover:bg-yellow-500/10 transition-all mr-1" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteProduct('${p.id}')" class="text-slate-500 hover:text-red-400 p-2 rounded hover:bg-red-500/10 transition-all" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        // --- SALVAR / UPLOAD ---
+        // --- SALVAR ---
         async function submitProductForm() {
             const btn = document.getElementById('btnSaveProduct');
-            const originalText = btn.innerText;
-            btn.innerText = "Processando...";
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Salvando...';
             btn.disabled = true;
-
+            
             const id = document.getElementById('prodId').value;
             const title = document.getElementById('prodTitle').value;
             let price = document.getElementById('prodPrice').value;
             const genre = document.getElementById('prodGenre').value;
             const desc = document.getElementById('prodDesc').value;
             const fileInput = document.getElementById('prodFile');
-            
-            if (!title || !price) {
-                setModalStatus("Preencha nome e preço.", true);
-                btn.disabled = false; btn.innerText = originalText;
+            const statusMsg = document.getElementById('prodModalStatus');
+
+            if(!title || !price) {
+                statusMsg.innerText = "Preencha nome e preço!";
+                statusMsg.classList.remove('hidden');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
                 return;
             }
 
-            // Garante que o preço tenha o R$ ao salvar se o usuário não digitar
-            if (!price.includes('R$')) {
-                // Remove espaços e garante formatação correta antes de salvar
-                price = `R$ ${price.trim()}`;
-            }
+            if(!price.includes('R$')) price = `R$ ${price}`;
 
             try {
                 let imageUrl = "";
-                if (id) {
+                if(id) {
                     const existing = currentProducts.find(p => p.id === id);
-                    if (existing) imageUrl = existing.image;
+                    if(existing) imageUrl = existing.image;
                 }
 
-                if (fileInput.files[0]) {
-                    setModalStatus("Enviando imagem...");
+                if(fileInput.files[0]) {
+                    statusMsg.innerText = "Enviando imagem para o servidor...";
+                    statusMsg.classList.remove('hidden');
                     const file = fileInput.files[0];
-                    const cleanName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '-').toLowerCase()}`;
-                    const imagePath = `img%20site/${cleanName}`; 
+                    const cleanName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '-')}`;
+                    const path = `img%20site/${cleanName}`;
                     const base64 = await toBase64(file);
-                    
-                    await uploadToGitHub(imagePath, base64.split(',')[1]);
-                    imageUrl = `https://raw.githubusercontent.com/${GH_REPO}/main/${imagePath}`;
+                    await uploadToGitHub(path, base64.split(',')[1]);
+                    imageUrl = `https://raw.githubusercontent.com/${GH_REPO}/main/${path}`;
                 }
 
-                const productData = {
-                    id: id || Date.now().toString(),
-                    name: title,
-                    price: price,
-                    category: genre,
-                    desc: desc,
-                    image: imageUrl
-                };
-
-                await updateJsonCatalog(productData, !!id); 
+                statusMsg.innerText = "Atualizando catálogo...";
+                const product = { id: id || Date.now().toString(), name: title, price, category: genre, desc, image: imageUrl };
+                await updateJson(product, !!id);
                 
-                setModalStatus("Salvo com sucesso!", false);
-                setTimeout(() => {
-                    closeProductModal();
-                    loadData();
-                }, 1000);
-
-            } catch (error) {
-                console.error("Erro ao salvar produto:", error);
-                let msg = error.message;
-                if(msg.includes("401")) msg = "Token inválido/expirado.";
-                if(msg.includes("404")) msg = "Repositório não encontrado.";
-                setModalStatus(msg, true);
+                closeProductModal();
+                loadData();
+            } catch(e) {
+                alert("Erro ao salvar: " + e.message);
             } finally {
+                btn.innerHTML = originalText;
                 btn.disabled = false;
-                btn.innerText = originalText;
+                statusMsg.classList.add('hidden');
             }
         }
-        
-        async function updateJsonCatalog(productData, isEditing, isDeleting = false) {
-            const path = 'produtos.json';
-            const url = `https://api.github.com/repos/${GH_REPO}/contents/${path}`;
-            const token = getRealToken();
-            let products = [], sha = null;
 
+        async function updateJson(item, isEdit, isDelete = false) {
+            const url = `https://api.github.com/repos/${GH_REPO}/contents/produtos.json`;
+            const token = getRealToken();
+            
+            // Get Current SHA
+            let products = [], sha = null;
             try {
-                const res = await fetch(url, { headers: { 'Authorization': `token ${token}` } });
-                if (res.ok) {
+                const res = await fetch(url, { headers: { 'Authorization': `token ${token}` }});
+                if(res.ok) {
                     const data = await res.json();
                     sha = data.sha;
                     products = JSON.parse(decodeURIComponent(escape(atob(data.content))));
                 }
-            } catch (e) {
-                console.warn("Arquivo não encontrado, criando novo.");
-            }
+            } catch(e) {}
 
-            const targetId = productData.id.toString();
-            if (isDeleting) {
-                products = products.filter(p => p.id.toString() !== targetId);
-            } else if (isEditing) {
-                const idx = products.findIndex(p => p.id.toString() === targetId);
-                if (idx !== -1) products[idx] = productData;
+            if(isDelete) {
+                products = products.filter(p => p.id !== item.id);
+            } else if (isEdit) {
+                const idx = products.findIndex(p => p.id === item.id);
+                if(idx !== -1) products[idx] = item;
             } else {
-                products.unshift(productData);
+                products.unshift(item);
             }
 
             const content = btoa(unescape(encodeURIComponent(JSON.stringify(products, null, 2))));
-            const body = { 
-                message: isDeleting ? `Delete ${targetId}` : `Update ${productData.name}`, 
-                content: content 
-            };
-            if (sha) body.sha = sha;
-
-            const saveRes = await fetch(url, {
+            
+            await fetch(url, {
                 method: 'PUT',
                 headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
+                body: JSON.stringify({
+                    message: "Update via Admin",
+                    content: content,
+                    sha: sha
+                })
             });
-
-            if (!saveRes.ok) throw new Error(`${saveRes.status}`);
         }
 
-        async function uploadToGitHub(path, contentBase64) {
+        async function uploadToGitHub(path, content) {
             const url = `https://api.github.com/repos/${GH_REPO}/contents/${path}`;
             const token = getRealToken();
-            let sha = null;
-            try {
-                const check = await fetch(url, { headers: { 'Authorization': `token ${token}` } });
-                if (check.ok) {
-                    const data = await check.json();
-                    sha = data.sha;
-                }
-            } catch(e) {}
-
-            const body = { message: `Image upload`, content: contentBase64 };
-            if (sha) body.sha = sha;
-
-            const res = await fetch(url, {
+            await fetch(url, {
                 method: 'PUT',
                 headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
+                body: JSON.stringify({ message: "Img upload", content: content })
             });
-            if (!res.ok) throw new Error(`${res.status}`);
         }
 
-        // --- Adicionando as Funções em falta (startEdit & deleteProduct) ---
-        function startEdit(id) {
-            const p = currentProducts.find(x => x.id === id);
-            if(!p) return;
-            document.getElementById('modalTitle').innerText = "Editar Produto";
-            document.getElementById('prodId').value = p.id;
-            document.getElementById('prodTitle').value = p.name;
-            
-            // Remove R$ para edição limpa
-            let priceValue = p.price.replace('R$', '').trim();
-            document.getElementById('prodPrice').value = priceValue;
-            
-            document.getElementById('prodGenre').value = p.category;
-            document.getElementById('prodDesc').value = p.desc;
-            openProductModal();
-        }
-
-        async function deleteProduct(id) {
-            if(!window.confirm("Tem certeza que deseja excluir este produto?")) return;
-            
-            // UI Feedback imediato
-            const btn = document.querySelector(`button[onclick="deleteProduct('${id}')"]`);
-            if(btn) {
-                btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i>';
-                btn.disabled = true;
-            }
-
-            try {
-                await updateJsonCatalog({id: id}, false, true);
-                loadData();
-            } catch(error) {
-                console.error("Erro ao deletar: " + error.message);
-                // alert("Erro ao excluir: " + error.message);
-                loadData(); // Restaura UI
+        // --- UTIL ---
+        function togglePass() {
+            const el = document.getElementById('loginPassword');
+            const icon = document.getElementById('toggleIcon');
+            if (el.type === 'password') {
+                el.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                el.type = 'password';
+                icon.className = 'fa-solid fa-eye';
             }
         }
-
         function toBase64(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -713,109 +607,75 @@
                 reader.onerror = error => reject(error);
             });
         }
-
-        function formatCurrency(input) {
-            let value = input.value.replace(/[^\d,]/g, "");
-            const parts = value.split(',');
-            if (parts.length > 2) value = parts[0] + ',' + parts.slice(1).join('');
-            if (parts.length === 2 && parts[1].length > 2) {
-                parts[1] = parts[1].substring(0, 2);
-                value = parts.join(',');
-            }
-            input.value = value;
-        }
-
-        function setModalStatus(msg, isError = false) {
-            const el = document.getElementById('prodModalStatus');
-            el.innerText = msg;
-            el.classList.remove('hidden', 'text-red-500', 'text-yellow-400');
-            el.classList.add(isError ? 'text-red-500' : 'text-yellow-400');
+        function formatCurrency(i) {
+            let v = i.value.replace(/\D/g,'');
+            v = (v/100).toFixed(2) + '';
+            v = v.replace(".", ",");
+            i.value = v.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
         }
 
         function showSection(id) {
-            ['dashboard', 'products'].forEach(s => document.getElementById('section-'+s).classList.add('hidden'));
+            document.getElementById('section-dashboard').classList.add('hidden');
+            document.getElementById('section-products').classList.add('hidden');
             document.getElementById('section-'+id).classList.remove('hidden');
-            document.querySelectorAll('.nav-item').forEach(b => {
-                b.classList.remove('bg-yellow-500/10', 'text-yellow-400', 'border-yellow-500/20');
-                b.classList.add('text-slate-400');
+            
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('bg-yellow-500/10', 'text-yellow-400', 'border-yellow-500/20');
+                el.classList.add('text-slate-400');
             });
             const btn = document.getElementById('nav-'+id);
-            if(btn) {
-                btn.classList.add('bg-yellow-500/10', 'text-yellow-400', 'border-yellow-500/20');
-                btn.classList.remove('text-slate-400');
-            }
-        }
-
-        function openSettingsModal(hasError = false) {
-             const modal = document.getElementById('settingsModal');
-             const content = document.getElementById('settingsModalContent');
-             const errorMsg = document.getElementById('tokenErrorMsg');
-             const input = document.getElementById('ghTokenInput');
-             
-             // Carrega token manual se houver
-             input.value = localStorage.getItem('atomic_gh_token') || '';
-             
-             if(hasError) errorMsg.classList.remove('hidden');
-             else errorMsg.classList.add('hidden');
-
-             modal.classList.remove('hidden');
-             modal.classList.add('flex');
-             setTimeout(() => {
-                modal.classList.add('modal-enter-active');
-                content.classList.add('modal-content-enter-active');
-                content.classList.remove('scale-95', 'opacity-0');
-            }, 10);
-        }
-
-        function closeSettingsModal() {
-             const modal = document.getElementById('settingsModal');
-             const content = document.getElementById('settingsModalContent');
-             content.classList.remove('modal-content-enter-active');
-             content.classList.add('modal-content-leave-to', 'scale-95', 'opacity-0');
-             setTimeout(() => {
-                modal.classList.remove('flex', 'modal-enter-active');
-                modal.classList.add('hidden');
-                content.classList.remove('modal-content-leave-to');
-            }, 300);
+            btn.classList.remove('text-slate-400');
+            btn.classList.add('bg-yellow-500/10', 'text-yellow-400', 'border-yellow-500/20');
         }
 
         function openProductModal() {
             const modal = document.getElementById('productModal');
-            const content = document.getElementById('productModalContent');
             modal.classList.remove('hidden');
-            modal.classList.add('flex');
+            // Pequeno delay para animação CSS
             setTimeout(() => {
-                modal.classList.add('modal-enter-active');
-                content.classList.add('modal-content-enter-active');
-                content.classList.remove('scale-95', 'opacity-0');
+                modal.classList.remove('opacity-0');
+                document.getElementById('productModalContent').classList.remove('scale-95');
             }, 10);
+            
             document.getElementById('addProductForm').reset();
-            document.getElementById('prodId').value = ""; 
-            document.getElementById('modalTitle').innerText = "Adicionar Produto";
-            setModalStatus('');
+            document.getElementById('prodId').value = "";
+            document.getElementById('modalTitle').innerText = "Novo Produto";
+            document.getElementById('prodModalStatus').classList.add('hidden');
         }
-
         function closeProductModal() {
             const modal = document.getElementById('productModal');
-            const content = document.getElementById('productModalContent');
-            content.classList.remove('modal-content-enter-active');
-            content.classList.add('modal-content-leave-to', 'scale-95', 'opacity-0');
+            modal.classList.add('opacity-0');
+            document.getElementById('productModalContent').classList.add('scale-95');
             setTimeout(() => {
-                modal.classList.remove('flex', 'modal-enter-active');
                 modal.classList.add('hidden');
-                content.classList.remove('modal-content-leave-to');
             }, 300);
         }
 
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                if(!document.getElementById('productModal').classList.contains('hidden')) closeProductModal();
-                if(!document.getElementById('settingsModal').classList.contains('hidden')) closeSettingsModal();
+        function startEdit(id) {
+            const p = currentProducts.find(x => x.id === id);
+            document.getElementById('prodId').value = p.id;
+            document.getElementById('prodTitle').value = p.name;
+            document.getElementById('prodPrice').value = p.price.replace('R$ ', '');
+            document.getElementById('prodGenre').value = p.category;
+            document.getElementById('prodDesc').value = p.desc;
+            document.getElementById('modalTitle').innerText = "Editar Produto";
+            openProductModal();
+        }
+        
+        async function deleteProduct(id) {
+            if(confirm("Tem certeza que deseja excluir este produto?")) {
+                await updateJson({id}, false, true);
+                loadData();
             }
-        });
+        }
 
-        // Start
-        initApp();
+        // Init
+        if (sessionStorage.getItem('atomic_auth') === 'true') {
+            loginSuccess();
+        } else {
+             // Garante que o checkbox comece certo (desligado/dark) se não estiver logado
+             document.getElementById('themeToggleCheckbox').checked = false;
+        }
     </script>
 </body>
 </html>
