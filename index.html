@@ -63,7 +63,7 @@
         body[data-theme="light"] nav,
         body[data-theme="light"] .content-area {
             background: rgba(11, 17, 32, 0.92); /* Muito escuro e quase sólido (92%) */
-            backdrop-filter: blur(8px);         /* Leve desfoque no que está atrás */
+            backdrop-filter: blur(8px);       /* Leve desfoque no que está atrás */
             -webkit-backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.08); /* Borda sutil para separar da imagem */
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
@@ -127,9 +127,38 @@
         
         .modal-enter-active { transition: opacity 0.3s; }
         .modal-enter-from, .modal-leave-to { opacity: 0; }
+
+        /* Estilo para a caixa de mensagem/modal personalizada (substitui alert/confirm) */
+        #customMessage {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 70;
+            background: #1f2937; /* Gray 800 */
+            border: 1px solid #eab308; /* Yellow 500 */
+            box-shadow: 0 10px 15px rgba(0,0,0,0.5);
+            padding: 24px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 90vw;
+            width: 400px;
+            color: #f1f5f9;
+            transition: all 0.3s;
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden" data-theme="dark">
+
+    <!-- CAIXA DE MENSAGEM CUSTOMIZADA (Substitui alert/confirm) -->
+    <div id="customMessageOverlay" class="fixed inset-0 z-[65] bg-black/70 hidden items-center justify-center transition-opacity opacity-0">
+        <div id="customMessage" class="transform scale-90">
+            <p id="customMessageText" class="mb-4 text-sm"></p>
+            <div id="customMessageButtons" class="flex justify-center gap-4">
+                <!-- Botões serão inseridos via JS -->
+            </div>
+        </div>
+    </div>
 
     <!-- NAVBAR -->
     <nav class="border-b border-slate-700 h-16 flex items-center justify-between px-6 shadow-lg z-20 transition-colors">
@@ -162,7 +191,7 @@
                 <span class="text-slate-400 font-semibold" id="statusText">Off</span>
             </div>
             
-            <button id="btnLogout" onclick="logout()" class="hidden text-slate-400 hover:text-red-500 transition-colors" title="Sair">
+            <button id="btnLogout" onclick="showConfirmation('Deseja desconectar do painel?', logoutAction)" class="hidden text-slate-400 hover:text-red-500 transition-colors" title="Sair">
                 <i class="fa-solid fa-power-off text-lg"></i>
             </button>
         </div>
@@ -307,17 +336,19 @@
             </div>
             
             <form id="addProductForm" class="p-6 space-y-4 overflow-y-auto custom-scroll bg-slate-900/40">
-                <input type="hidden" id="prodId">
+                <!-- CAMPO OCULTO DO ID DO PRODUTO (CRUCIAL PARA EDIÇÃO) -->
+                <input type="hidden" id="prodId" value=""> 
+
                 <div class="grid grid-cols-2 gap-5">
                     <div class="col-span-2">
                         <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">Nome do Produto</label>
-                        <input type="text" id="prodTitle" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-white focus:border-yellow-500 outline-none transition-colors">
+                        <input type="text" id="prodTitle" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-white focus:border-yellow-500 outline-none transition-colors" required>
                     </div>
                     <div>
                         <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">Preço (R$)</label>
                         <div class="relative">
                             <span class="absolute left-3 top-3 text-slate-500">R$</span>
-                            <input type="text" id="prodPrice" placeholder="0,00" oninput="formatCurrency(this)" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 pl-9 text-white outline-none focus:border-yellow-500 font-mono">
+                            <input type="text" id="prodPrice" placeholder="0,00" oninput="formatCurrency(this)" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 pl-9 text-white outline-none focus:border-yellow-500 font-mono" required>
                         </div>
                     </div>
                     <div>
@@ -335,7 +366,7 @@
                             <div class="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center group-hover:bg-yellow-500 group-hover:text-black transition-colors">
                                 <i class="fa-solid fa-cloud-arrow-up text-yellow-500 group-hover:text-black"></i>
                             </div>
-                            <span class="text-sm text-slate-400 group-hover:text-white">Clique para selecionar imagem...</span>
+                            <span class="text-sm text-slate-400 group-hover:text-white" id="fileLabel">Clique para selecionar imagem (opcional)...</span>
                             <input type="file" id="prodFile" accept="image/*" class="hidden">
                         </label>
                     </div>
@@ -363,6 +394,64 @@
         
         let currentProducts = [];
 
+        // --- CUSTOM MESSAGE/MODAL (REPLACE alert/confirm) ---
+        function showMessage(message, type = 'info') {
+            const overlay = document.getElementById('customMessageOverlay');
+            const box = document.getElementById('customMessage');
+            const text = document.getElementById('customMessageText');
+            const buttons = document.getElementById('customMessageButtons');
+            
+            text.innerText = message;
+            buttons.innerHTML = `<button onclick="closeCustomMessage()" class="px-4 py-2 bg-yellow-500 text-black font-bold rounded-lg transition-colors hover:bg-yellow-400">OK</button>`;
+            
+            overlay.classList.remove('hidden', 'opacity-0');
+            box.classList.remove('scale-90');
+            setTimeout(() => {
+                overlay.classList.remove('opacity-0');
+                box.classList.remove('scale-90');
+            }, 10);
+        }
+
+        function showConfirmation(message, onConfirm) {
+            const overlay = document.getElementById('customMessageOverlay');
+            const box = document.getElementById('customMessage');
+            const text = document.getElementById('customMessageText');
+            const buttons = document.getElementById('customMessageButtons');
+
+            text.innerText = message;
+            buttons.innerHTML = `
+                <button onclick="closeCustomMessage()" class="px-4 py-2 text-sm font-bold text-slate-400 hover:text-white transition-colors">Cancelar</button>
+                <button onclick="handleConfirmation('${onConfirm.name}')" class="px-6 py-2 bg-red-600 text-white font-bold rounded-lg shadow-lg hover:bg-red-500 transition-colors">Confirmar</button>
+            `;
+            
+            overlay.classList.remove('hidden', 'opacity-0');
+            box.classList.remove('scale-90');
+            setTimeout(() => {
+                overlay.classList.remove('opacity-0');
+                box.classList.remove('scale-90');
+            }, 10);
+        }
+
+        function closeCustomMessage() {
+            const overlay = document.getElementById('customMessageOverlay');
+            const box = document.getElementById('customMessage');
+            
+            overlay.classList.add('opacity-0');
+            box.classList.add('scale-90');
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+            }, 300);
+        }
+
+        function handleConfirmation(functionName) {
+            closeCustomMessage();
+            if (window[functionName]) {
+                window[functionName]();
+            } else {
+                console.error("Função de confirmação não encontrada:", functionName);
+            }
+        }
+        
         // --- LÓGICA DE TEMA (BACKGROUND & SWITCH) ---
         function applyTheme(theme) {
             document.body.setAttribute('data-theme', theme);
@@ -372,7 +461,6 @@
             
             if (theme === 'light') {
                 checkbox.checked = true; // Switch ligado (Modo Imagem)
-                // Estilos "Light Mode" já tratados no CSS para manter harmonia
             } else {
                 checkbox.checked = false; // Switch desligado (Modo Dark/Padrão)
             }
@@ -418,11 +506,9 @@
             loadData();
         }
 
-        function logout() {
-            if(confirm("Deseja desconectar do painel?")) {
-                sessionStorage.removeItem('atomic_auth');
-                location.reload();
-            }
+        function logoutAction() {
+            sessionStorage.removeItem('atomic_auth');
+            location.reload();
         }
 
         // --- DADOS ---
@@ -448,7 +534,8 @@
                 document.getElementById('statTotalProducts').innerText = currentProducts.length;
                 showSection('dashboard'); // Garante que a primeira seção seja o dashboard
             } catch (e) {
-                console.error(e);
+                console.error("Erro ao carregar dados:", e);
+                showMessage('Erro ao carregar dados do GitHub. Verifique a conexão ou o token.', 'error');
                 document.getElementById('productsTableBody').innerHTML = '<tr><td colspan="5" class="p-6 text-center text-red-400 bg-red-500/10 rounded-lg m-4"><i class="fa-solid fa-wifi mr-2"></i> Erro de Conexão com GitHub</td></tr>';
             }
         }
@@ -480,8 +567,10 @@
                     <td class="p-4"><span class="px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${catBadge}">${p.category}</span></td>
                     <td class="p-4 text-emerald-400 font-mono font-bold tracking-tight">${p.price}</td>
                     <td class="p-4 pr-5 text-right">
+                        <!-- Botão de editar agora chama a função startEdit(id) corretamente -->
                         <button onclick="startEdit('${p.id}')" class="text-slate-500 hover:text-yellow-400 p-2 rounded hover:bg-yellow-500/10 transition-all mr-1" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                        <button onclick="deleteProduct('${p.id}')" class="text-slate-500 hover:text-red-400 p-2 rounded hover:bg-red-500/10 transition-all" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                        <!-- Botão de excluir agora usa o modal de confirmação customizado -->
+                        <button onclick="showConfirmation('Tem certeza que deseja excluir o produto ${p.name}?', () => deleteProduct('${p.id}'))" class="text-slate-500 hover:text-red-400 p-2 rounded hover:bg-red-500/10 transition-all" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -495,7 +584,10 @@
             btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Salvando...';
             btn.disabled = true;
             
-            const id = document.getElementById('prodId').value;
+            // Verifica se é uma edição
+            const id = document.getElementById('prodId').value || Date.now().toString();
+            const isEdit = !!document.getElementById('prodId').value;
+            
             const title = document.getElementById('prodTitle').value;
             let price = document.getElementById('prodPrice').value;
             const genre = document.getElementById('prodGenre').value;
@@ -511,11 +603,13 @@
                 return;
             }
 
+            // Normaliza o preço para o formato de exibição
             if(!price.includes('R$')) price = `R$ ${price}`;
 
             try {
                 let imageUrl = "";
-                if(id) {
+                // Se for edição, tenta pegar a imagem existente primeiro
+                if(isEdit) {
                     const existing = currentProducts.find(p => p.id === id);
                     if(existing) imageUrl = existing.image;
                 }
@@ -524,21 +618,29 @@
                     statusMsg.innerText = "Enviando imagem para o servidor...";
                     statusMsg.classList.remove('hidden');
                     const file = fileInput.files[0];
+                    // Gerar um nome de arquivo único
                     const cleanName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '-')}`;
                     const path = `img%20site/${cleanName}`;
                     const base64 = await toBase64(file);
-                    await uploadToGitHub(path, base64.split(',')[1]);
+                    
+                    // Tratamento de erro robusto para upload de imagem
+                    await uploadToGitHub(path, base64.split(',')[1], statusMsg);
                     imageUrl = `https://raw.githubusercontent.com/${GH_REPO}/main/${path}`;
                 }
 
-                statusMsg.innerText = "Atualizando catálogo...";
-                const product = { id: id || Date.now().toString(), name: title, price, category: genre, desc, image: imageUrl };
-                await updateJson(product, !!id);
+                statusMsg.innerText = isEdit ? "Atualizando catálogo..." : "Adicionando ao catálogo...";
                 
+                // Cria o objeto do produto usando o ID (novo ou existente)
+                const product = { id, name: title, price, category: genre, desc, image: imageUrl };
+                
+                await updateJson(product, isEdit);
+                
+                showMessage(`Produto ${title} ${isEdit ? 'editado' : 'adicionado'} com sucesso!`);
                 closeProductModal();
                 loadData();
             } catch(e) {
-                alert("Erro ao salvar: " + e.message);
+                console.error("Erro ao salvar:", e);
+                showMessage("Erro ao salvar: " + e.message, 'error');
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
@@ -550,7 +652,7 @@
             const url = `https://api.github.com/repos/${GH_REPO}/contents/produtos.json`;
             const token = getRealToken();
             
-            // Get Current SHA
+            // 1. Get Current SHA and Content
             let products = [], sha = null;
             try {
                 const res = await fetch(url, { headers: { 'Authorization': `token ${token}` }});
@@ -558,40 +660,120 @@
                     const data = await res.json();
                     sha = data.sha;
                     products = JSON.parse(decodeURIComponent(escape(atob(data.content))));
+                } else if(res.status === 404) {
+                    // Arquivo não existe, inicia com array vazio
+                    products = [];
+                } else {
+                    throw new Error(`Falha ao obter dados: ${res.statusText}`);
                 }
-            } catch(e) {}
-
-            if(isDelete) {
-                products = products.filter(p => p.id !== item.id);
-            } else if (isEdit) {
-                const idx = products.findIndex(p => p.id === item.id);
-                if(idx !== -1) products[idx] = item;
-            } else {
-                products.unshift(item);
+            } catch(e) {
+                throw new Error("Falha ao ler o arquivo produtos.json. Verifique o token ou permissões.");
             }
 
+            // 2. Modify Array
+            if(isDelete) {
+                products = products.filter(p => p.id !== item.id);
+                // Verifica se realmente algo foi excluído
+                if (products.length === currentProducts.length) {
+                    throw new Error("Produto não encontrado para exclusão.");
+                }
+            } else if (isEdit) {
+                const idx = products.findIndex(p => p.id === item.id);
+                if(idx !== -1) {
+                    products[idx] = item;
+                } else {
+                    // Se estiver em modo edição mas não encontrou, adiciona como novo
+                    products.unshift(item);
+                }
+            } else {
+                products.unshift(item); // Adicionar novo produto
+            }
+
+            // 3. Commit Changes
             const content = btoa(unescape(encodeURIComponent(JSON.stringify(products, null, 2))));
             
-            await fetch(url, {
+            const commitMessage = isDelete ? `DEL: Produto ID ${item.id}` : 
+                                    (isEdit ? `EDIT: Produto ${item.name}` : `ADD: Produto ${item.name}`);
+
+            const commitPayload = {
+                message: commitMessage,
+                content: content,
+            };
+            // SHA só é necessário se o arquivo já existir (que é o caso se passamos pelo passo 1)
+            if (sha) commitPayload.sha = sha;
+
+            const commitRes = await fetch(url, {
                 method: 'PUT',
                 headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: "Update via Admin",
-                    content: content,
-                    sha: sha
-                })
+                body: JSON.stringify(commitPayload)
             });
+
+            if (!commitRes.ok) {
+                const errorData = await commitRes.json();
+                throw new Error(`Falha no commit: ${commitRes.status} - ${errorData.message || commitRes.statusText}`);
+            }
         }
 
-        async function uploadToGitHub(path, content) {
+        async function uploadToGitHub(path, content, statusMsg) {
             const url = `https://api.github.com/repos/${GH_REPO}/contents/${path}`;
             const token = getRealToken();
-            await fetch(url, {
-                method: 'PUT',
-                headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: "Img upload", content: content })
-            });
+            
+            try {
+                const uploadRes = await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: "Img upload via Admin", content: content })
+                });
+
+                if (!uploadRes.ok) {
+                    const errorData = await uploadRes.json();
+                    throw new Error(`Falha no upload da imagem: ${uploadRes.status} - ${errorData.message || uploadRes.statusText}`);
+                }
+            } catch (e) {
+                statusMsg.innerText = "Erro no upload da imagem. Tentando prosseguir com URL padrão...";
+                console.error("Erro no upload da imagem:", e);
+                // Falha no upload é uma falha grave, mas o produto pode ser criado/editado sem a imagem nova
+                throw e; 
+            }
         }
+
+        // --- LÓGICA DE EDIÇÃO/EXCLUSÃO ---
+        function startEdit(id) {
+            const p = currentProducts.find(x => x.id === id);
+            
+            document.getElementById('prodId').value = p.id;
+            document.getElementById('prodTitle').value = p.name;
+            // Remove 'R$ ' para facilitar a edição do número puro
+            document.getElementById('prodPrice').value = p.price.replace('R$ ', '').replace('.', '').replace(',', '.'); 
+            document.getElementById('prodGenre').value = p.category;
+            document.getElementById('prodDesc').value = p.desc;
+            document.getElementById('modalTitle').innerText = "Editar Produto";
+            document.getElementById('fileLabel').innerText = "Clique para selecionar nova imagem (opcional)...";
+            openProductModal();
+        }
+        
+        async function deleteProduct(id) {
+            const btn = document.getElementById('btnLogout');
+            btn.disabled = true;
+
+            try {
+                const itemToDelete = currentProducts.find(p => p.id === id);
+                if (!itemToDelete) {
+                    showMessage("Erro: Produto não encontrado no catálogo local.", 'error');
+                    return;
+                }
+                
+                await updateJson({id: id}, false, true); // isDelete = true
+                showMessage(`Produto "${itemToDelete.name}" excluído com sucesso!`);
+                loadData();
+            } catch (e) {
+                console.error("Erro ao excluir:", e);
+                showMessage("Erro ao excluir: " + e.message, 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
 
         // --- UTIL ---
         function togglePass() {
@@ -613,6 +795,7 @@
                 reader.onerror = error => reject(error);
             });
         }
+        // Formata o valor de R$ no campo de preço
         function formatCurrency(i) {
             let v = i.value.replace(/\D/g,'');
             v = (v/100).toFixed(2) + '';
@@ -643,15 +826,18 @@
         function openProductModal() {
             const modal = document.getElementById('productModal');
             modal.classList.remove('hidden');
-            // Pequeno delay para animação CSS
+            
             setTimeout(() => {
                 modal.classList.remove('opacity-0');
                 document.getElementById('productModalContent').classList.remove('scale-95');
             }, 10);
             
-            document.getElementById('addProductForm').reset();
-            document.getElementById('prodId').value = "";
-            document.getElementById('modalTitle').innerText = "Novo Produto";
+            // Reseta o formulário apenas se for uma nova adição (prodId vazio)
+            if (!document.getElementById('prodId').value) {
+                document.getElementById('addProductForm').reset();
+                document.getElementById('modalTitle').innerText = "Novo Produto";
+                document.getElementById('fileLabel').innerText = "Clique para selecionar imagem...";
+            }
             document.getElementById('prodModalStatus').classList.add('hidden');
         }
         function closeProductModal() {
@@ -660,25 +846,9 @@
             document.getElementById('productModalContent').classList.add('scale-95');
             setTimeout(() => {
                 modal.classList.add('hidden');
+                document.getElementById('addProductForm').reset();
+                document.getElementById('prodId').value = ""; // Limpa o ID após fechar
             }, 300);
-        }
-
-        function startEdit(id) {
-            const p = currentProducts.find(x => x.id === id);
-            document.getElementById('prodId').value = p.id;
-            document.getElementById('prodTitle').value = p.name;
-            document.getElementById('prodPrice').value = p.price.replace('R$ ', '');
-            document.getElementById('prodGenre').value = p.category;
-            document.getElementById('prodDesc').value = p.desc;
-            document.getElementById('modalTitle').innerText = "Editar Produto";
-            openProductModal();
-        }
-        
-        async function deleteProduct(id) {
-            if(confirm("Tem certeza que deseja excluir este produto?")) {
-                await updateJson({id}, false, true);
-                loadData();
-            }
         }
 
         // Init
@@ -691,6 +861,13 @@
         
         // Garante que o checkbox do tema reflita o estado atual ao carregar
         document.getElementById('themeToggleCheckbox').checked = (savedTheme === 'light');
+
+        // Adiciona listener para input de arquivo
+        document.getElementById('prodFile').addEventListener('change', (event) => {
+            const fileName = event.target.files[0] ? event.target.files[0].name : 'Clique para selecionar imagem...';
+            document.getElementById('fileLabel').innerText = fileName;
+        });
+
     </script>
 </body>
 </html>
