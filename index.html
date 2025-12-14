@@ -23,7 +23,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Rajdhani:wght@500;700&display=swap');
 
         /* ---------------------------------------------------- */
-        /* CONFIGURAÇÃO DE TEMAS E HARMONIA VISUAL             */
+        /* CONFIGURAÇÃO DE TEMAS E HARMONIA VISUAL              */
         /* ---------------------------------------------------- */
 
         body {
@@ -63,7 +63,7 @@
         body[data-theme="light"] nav,
         body[data-theme="light"] .content-area {
             background: rgba(11, 17, 32, 0.92); /* Muito escuro e quase sólido (92%) */
-            backdrop-filter: blur(8px);       /* Leve desfoque no que está atrás */
+            backdrop-filter: blur(8px);        /* Leve desfoque no que está atrás */
             -webkit-backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.08); /* Borda sutil para separar da imagem */
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
@@ -304,6 +304,13 @@
                     </button>
                 </header>
 
+                <!-- NOVO: Campo de busca de produtos -->
+                <div class="relative">
+                    <i class="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500"></i>
+                    <!-- Chama a função searchProducts() ao digitar -->
+                    <input type="text" id="productSearchInput" oninput="searchProducts(this.value)" placeholder="Buscar por nome ou categoria do produto..." class="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white placeholder-slate-500 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all">
+                </div>
+
                 <div class="glass-panel rounded-xl overflow-hidden border border-slate-700/50 shadow-xl">
                     <table class="w-full text-left">
                         <thead class="bg-slate-900/80 text-slate-400 text-xs uppercase tracking-wider">
@@ -510,6 +517,29 @@
             sessionStorage.removeItem('atomic_auth');
             location.reload();
         }
+
+        // --- LÓGICA DE BUSCA (NOVA FUNÇÃO) ---
+        /**
+         * Filtra os produtos com base no termo de busca e renderiza a lista.
+         * @param {string} searchTerm - O termo digitado pelo usuário.
+         */
+        function searchProducts(searchTerm) {
+            const query = searchTerm.toLowerCase().trim();
+
+            if (query === "") {
+                // Se a busca estiver vazia, renderiza a lista completa
+                renderProducts(currentProducts);
+                return;
+            }
+
+            const filteredList = currentProducts.filter(p => 
+                p.name.toLowerCase().includes(query) ||
+                p.category.toLowerCase().includes(query)
+            );
+
+            renderProducts(filteredList);
+        }
+
 
         // --- DADOS ---
         function getRealToken() {
@@ -820,6 +850,15 @@
             if (btn) {
                 btn.classList.remove('text-slate-400');
                 btn.classList.add('bg-yellow-500/10', 'text-yellow-400', 'border-yellow-500/20');
+            }
+
+            // NOVO: Limpa a busca e restaura a lista completa ao entrar na seção 'products'
+            if (id === 'products') {
+                const searchInput = document.getElementById('productSearchInput');
+                if (searchInput && currentProducts.length > 0) {
+                    searchInput.value = ''; // Limpa o termo de busca
+                    renderProducts(currentProducts); // Restaura a lista completa
+                }
             }
         }
 
