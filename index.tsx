@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 
-// CONFIG: Usa URL relativa, pois o servidor serve tanto o site quanto a API
+// CONFIG
 const API_BASE_URL = "/api";
 
 // TYPES
@@ -18,6 +18,23 @@ interface Banner {
   id: string;
   image: string;
   link: string;
+}
+
+interface Order {
+    id: string;
+    customer: string;
+    total: string;
+    status: 'pending' | 'approved' | 'shipped' | 'delivered';
+    date: string;
+    items: string; // Descrição resumida
+}
+
+interface SiteConfig {
+    whatsapp: string;
+    instagram: string;
+    maintenance: boolean;
+    announcement: string;
+    ga_id: string;
 }
 
 // COMPONENTES
@@ -130,7 +147,6 @@ const DashboardLayout = ({ token, onLogout, theme, toggleTheme }: any) => {
       const resP = await fetch(`${API_BASE_URL}/products`, { headers: { Authorization: `Bearer ${token}` } });
       if (resP.ok) {
         const dataP = await resP.json();
-        // Check if data is array to prevent crashes
         if (Array.isArray(dataP)) setProducts(dataP);
       }
       const resB = await fetch(`${API_BASE_URL}/banners`, { headers: { Authorization: `Bearer ${token}` } });
@@ -165,23 +181,29 @@ const DashboardLayout = ({ token, onLogout, theme, toggleTheme }: any) => {
       <div className="flex-1 flex overflow-hidden">
         <aside style={contentStyle} className="w-64 border-r border-slate-700/50 flex-col hidden md:flex transition-all z-10">
            <div className="p-4 space-y-2">
-             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Navegação</p>
-             <NavButton icon="fa-chart-line" label="Dashboard" active={section === 'dashboard'} onClick={() => setSection('dashboard')} />
+             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Principal</p>
+             <NavButton icon="fa-chart-pie" label="Visão Geral" active={section === 'dashboard'} onClick={() => setSection('dashboard')} />
+             <NavButton icon="fa-shopping-cart" label="Pedidos" active={section === 'orders'} onClick={() => setSection('orders')} />
+             
+             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 mt-6">Gestão</p>
              <NavButton icon="fa-box-open" label="Produtos" active={section === 'products'} onClick={() => setSection('products')} />
              <NavButton icon="fa-images" label="Banners" active={section === 'banners'} onClick={() => setSection('banners')} />
+             <NavButton icon="fa-sliders" label="Configurações" active={section === 'settings'} onClick={() => setSection('settings')} />
            </div>
            <div className="mt-auto p-4 border-t border-slate-700/50">
              <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-800/50 border border-slate-700/50">
                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-500 to-orange-600 flex items-center justify-center text-xs font-bold text-black">A</div>
-               <div><p className="text-sm font-bold leading-tight">Master Admin</p><p className="text-[10px] text-emerald-500">● Conectado</p></div>
+               <div><p className="text-sm font-bold leading-tight">Master Admin</p><p className="text-[10px] text-emerald-500">● Online</p></div>
              </div>
            </div>
         </aside>
 
         <main style={contentStyle} className="flex-1 p-6 overflow-auto custom-scroll relative">
-           {section === 'dashboard' && <DashboardHome productsCount={products.length} />}
+           {section === 'dashboard' && <DashboardHome products={products} />}
            {section === 'products' && <ProductsManager token={token} products={products} refresh={fetchData} loading={loadingProd} />}
            {section === 'banners' && <BannersManager token={token} banners={banners} refresh={fetchData} />}
+           {section === 'orders' && <OrdersManager token={token} />}
+           {section === 'settings' && <SettingsManager token={token} />}
         </main>
       </div>
     </div>
@@ -194,36 +216,265 @@ const NavButton = ({ icon, label, active, onClick }: any) => (
   </button>
 );
 
-const DashboardHome = ({ productsCount }: { productsCount: number }) => (
-  <div className="space-y-6 fade-in">
-    <header className="mb-8">
-      <h2 className="text-4xl font-bold font-[Rajdhani] mb-2">Dashboard</h2>
-      <p className="text-slate-400">Visão geral do sistema e métricas.</p>
-    </header>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <StatCard icon="fa-gamepad" label="Total de Produtos" value={productsCount} color="yellow" />
-      <StatCard icon="fa-images" label="Banners Ativos" value="2" color="blue" />
-      <div className="glass-panel p-6 rounded-2xl border-l-4 border-emerald-500 bg-slate-800/50">
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Status da API</p>
-          <div className="flex items-center gap-3 mt-3">
-              <span className="relative flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span></span>
-              <h3 className="text-2xl font-bold">Seguro</h3>
-          </div>
-          <p className="text-[10px] text-slate-500 mt-2 font-mono">Backend: Connected</p>
-      </div>
-    </div>
-  </div>
-);
+const DashboardHome = ({ products }: { products: Product[] }) => {
+    // Cálculos reais
+    const totalValue = products.reduce((acc, p) => {
+        const price = parseFloat(p.price.replace('R$', '').replace('.', '').replace(',', '.').trim()) || 0;
+        return acc + price;
+    }, 0);
 
-const StatCard = ({ icon, label, value, color }: any) => (
+    const formattedTotal = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValue);
+    const lowStock = products.length < 5; // Regra de negócio simples
+
+    return (
+      <div className="space-y-6 fade-in">
+        <header className="mb-8">
+          <h2 className="text-4xl font-bold font-[Rajdhani] mb-2">Painel de Controle</h2>
+          <p className="text-slate-400">Resumo financeiro e operacional da Atomic Games.</p>
+        </header>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <StatCard icon="fa-sack-dollar" label="Valor em Estoque" value={formattedTotal} color="emerald" />
+          <StatCard icon="fa-gamepad" label="Produtos Ativos" value={products.length} color="yellow" />
+          <StatCard icon="fa-users" label="Visitas (Mensal)" value="~1.2k" color="blue" isEstimate={true} />
+          
+          <div className="glass-panel p-6 rounded-2xl border-l-4 border-purple-500 bg-slate-800/50">
+             <div className="flex justify-between items-start">
+                 <div>
+                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Status da Loja</p>
+                    <h3 className="text-xl font-bold mt-1 text-purple-400">Operando</h3>
+                 </div>
+                 <i className="fa-solid fa-server text-2xl text-purple-500/50"></i>
+             </div>
+             <div className="mt-4 w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                <div className="bg-purple-500 h-full w-[98%]"></div>
+             </div>
+             <p className="text-[10px] text-right mt-1 text-slate-500">Uptime 99.9%</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <div className="glass-panel p-6 rounded-2xl border border-slate-700/50">
+                <h3 className="text-lg font-bold mb-4 font-[Rajdhani]"><i className="fa-solid fa-chart-simple text-yellow-500 mr-2"></i> Tráfego Recente</h3>
+                <div className="h-48 flex items-center justify-center border-2 border-dashed border-slate-700 rounded-lg bg-slate-800/30">
+                    <div className="text-center">
+                        <i className="fa-brands fa-google-analytics text-4xl text-slate-500 mb-2"></i>
+                        <p className="text-slate-400 text-sm">Integre o Google Analytics nas configurações<br/>para ver gráficos em tempo real.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="glass-panel p-6 rounded-2xl border border-slate-700/50">
+                 <h3 className="text-lg font-bold mb-4 font-[Rajdhani]"><i className="fa-solid fa-bell text-yellow-500 mr-2"></i> Alertas do Sistema</h3>
+                 <div className="space-y-3">
+                    {lowStock && (
+                         <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-3">
+                             <i className="fa-solid fa-triangle-exclamation text-red-500"></i>
+                             <div>
+                                 <p className="text-sm font-bold text-red-400">Estoque Baixo</p>
+                                 <p className="text-xs text-slate-400">Menos de 5 produtos cadastrados.</p>
+                             </div>
+                         </div>
+                    )}
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center gap-3">
+                         <i className="fa-solid fa-check-circle text-emerald-500"></i>
+                         <div>
+                             <p className="text-sm font-bold text-emerald-400">Sistema Atualizado</p>
+                             <p className="text-xs text-slate-400">Versão 2.0 "Completão" ativa.</p>
+                         </div>
+                    </div>
+                 </div>
+            </div>
+        </div>
+      </div>
+    );
+};
+
+const StatCard = ({ icon, label, value, color, isEstimate }: any) => (
   <div className={`glass-panel p-6 rounded-2xl border-l-4 border-${color}-500 relative overflow-hidden group bg-slate-800/50`}>
      <div className="absolute right-[-10px] top-[-10px] opacity-[0.05] group-hover:opacity-[0.1] transition-all transform group-hover:scale-110 duration-500">
         <i className={`fa-solid ${icon} text-9xl text-white`}></i>
      </div>
-     <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">{label}</p>
-     <h3 className="text-5xl font-bold mt-2 drop-shadow-lg">{value}</h3>
+     <div className="flex justify-between items-start relative z-10">
+        <div>
+             <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">{label}</p>
+             <h3 className="text-3xl font-bold mt-2 drop-shadow-lg flex items-center gap-2">
+                 {value}
+                 {isEstimate && <span className="text-[10px] bg-slate-700 px-1 rounded text-slate-300">EST</span>}
+             </h3>
+        </div>
+        <div className={`w-10 h-10 rounded-lg bg-${color}-500/20 flex items-center justify-center text-${color}-400`}>
+            <i className={`fa-solid ${icon}`}></i>
+        </div>
+     </div>
   </div>
 );
+
+const OrdersManager = ({ token }: { token: string }) => {
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    const fetchOrders = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/orders`, { headers: { Authorization: `Bearer ${token}` } });
+            if (res.ok) {
+                const data = await res.json();
+                setOrders(data);
+            }
+        } catch(e) { console.error(e); } finally { setLoading(false); }
+    };
+
+    const updateStatus = async (id: string, newStatus: string) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/orders/update`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ orderId: id, status: newStatus })
+            });
+            if (res.ok) fetchOrders();
+        } catch(e) { alert("Erro ao atualizar"); }
+    };
+
+    useEffect(() => { fetchOrders(); }, []);
+
+    const getStatusColor = (s: string) => {
+        switch(s) {
+            case 'pending': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+            case 'approved': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+            case 'shipped': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+            case 'delivered': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+            default: return 'bg-slate-700 text-slate-300';
+        }
+    };
+
+    return (
+        <div className="space-y-6 fade-in">
+             <header className="flex justify-between items-end pb-4 border-b border-slate-700/50">
+                <div><h2 className="text-3xl font-bold font-[Rajdhani]">Pedidos</h2><p className="text-slate-400">Gerenciamento de vendas e solicitações.</p></div>
+                <button onClick={fetchOrders} className="text-slate-400 hover:text-white"><i className="fa-solid fa-sync"></i></button>
+            </header>
+            
+            <div className="glass-panel rounded-xl overflow-hidden border border-slate-700/50 shadow-xl">
+                 {orders.length === 0 ? (
+                     <div className="p-12 text-center text-slate-500">
+                         <i className="fa-solid fa-box-open text-4xl mb-3 opacity-50"></i>
+                         <p>Nenhum pedido encontrado no momento.</p>
+                         <p className="text-xs mt-2">Os pedidos aparecerão aqui quando o arquivo orders.json for populado.</p>
+                     </div>
+                 ) : (
+                    <table className="w-full text-left">
+                        <thead className="bg-slate-900/80 text-slate-400 text-xs uppercase">
+                            <tr><th className="p-4">ID</th><th className="p-4">Cliente</th><th className="p-4">Itens</th><th className="p-4">Total</th><th className="p-4">Status</th><th className="p-4">Ação</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-700/30 text-sm">
+                            {orders.map(o => (
+                                <tr key={o.id} className="hover:bg-slate-800/50">
+                                    <td className="p-4 font-mono text-xs text-slate-500">#{o.id}</td>
+                                    <td className="p-4 font-bold">{o.customer}</td>
+                                    <td className="p-4 text-slate-400">{o.items}</td>
+                                    <td className="p-4 font-mono text-emerald-400">{o.total}</td>
+                                    <td className="p-4"><span className={`px-2 py-1 rounded text-[10px] font-bold border uppercase ${getStatusColor(o.status)}`}>{o.status}</span></td>
+                                    <td className="p-4">
+                                        <select onChange={(e) => updateStatus(o.id, e.target.value)} value={o.status} className="bg-slate-900 border border-slate-700 rounded text-xs p-1 focus:border-yellow-500 outline-none">
+                                            <option value="pending">Pendente</option>
+                                            <option value="approved">Aprovado</option>
+                                            <option value="shipped">Enviado</option>
+                                            <option value="delivered">Entregue</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                 )}
+            </div>
+        </div>
+    );
+};
+
+const SettingsManager = ({ token }: { token: string }) => {
+    const [config, setConfig] = useState<SiteConfig>({ whatsapp: '', instagram: '', maintenance: false, announcement: '', ga_id: '' });
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        fetch(`${API_BASE_URL}/config`, { headers: { Authorization: `Bearer ${token}` } })
+            .then(res => res.json())
+            .then(data => setConfig(data))
+            .catch(console.error);
+    }, []);
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/config`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify(config)
+            });
+            if(res.ok) alert("Configurações atualizadas!");
+        } catch(e) { alert("Erro ao salvar"); }
+        finally { setSaving(false); }
+    };
+
+    return (
+        <div className="space-y-6 fade-in max-w-4xl">
+             <header className="pb-4 border-b border-slate-700/50">
+                <h2 className="text-3xl font-bold font-[Rajdhani]">Configurações da Loja</h2>
+                <p className="text-slate-400">Controle global de informações e status do site.</p>
+            </header>
+
+            <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="glass-panel p-6 rounded-xl border border-slate-700 space-y-4">
+                    <h3 className="text-lg font-bold text-yellow-500 mb-4"><i className="fa-brands fa-whatsapp mr-2"></i> Contato & Social</h3>
+                    <div>
+                        <label className="text-xs font-bold text-slate-400 uppercase">WhatsApp (Apenas números)</label>
+                        <input type="text" value={config.whatsapp} onChange={e => setConfig({...config, whatsapp: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded p-3 mt-1 focus:border-yellow-500 outline-none" placeholder="5511999999999" />
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-slate-400 uppercase">Link do Instagram</label>
+                        <input type="text" value={config.instagram} onChange={e => setConfig({...config, instagram: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded p-3 mt-1 focus:border-yellow-500 outline-none" />
+                    </div>
+                </div>
+
+                <div className="glass-panel p-6 rounded-xl border border-slate-700 space-y-4">
+                    <h3 className="text-lg font-bold text-blue-500 mb-4"><i className="fa-solid fa-chart-line mr-2"></i> Análise de Dados</h3>
+                    <div>
+                        <label className="text-xs font-bold text-slate-400 uppercase">Google Analytics ID (G-XXXXXXX)</label>
+                        <input type="text" value={config.ga_id} onChange={e => setConfig({...config, ga_id: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded p-3 mt-1 focus:border-blue-500 outline-none" placeholder="G-ABC123456" />
+                        <p className="text-[10px] text-slate-500 mt-1">Insira seu ID de medição para conectar o site ao GA4.</p>
+                    </div>
+                </div>
+
+                <div className="glass-panel p-6 rounded-xl border border-slate-700 space-y-4 md:col-span-2">
+                    <h3 className="text-lg font-bold text-red-500 mb-4"><i className="fa-solid fa-triangle-exclamation mr-2"></i> Zona de Perigo / Avisos</h3>
+                    
+                    <div className="flex items-center justify-between p-4 bg-slate-900 rounded-lg border border-slate-700">
+                        <div>
+                            <span className="font-bold block text-white">Modo Manutenção</span>
+                            <span className="text-xs text-slate-400">Desativa o site público temporariamente.</span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" checked={config.maintenance} onChange={e => setConfig({...config, maintenance: e.target.checked})} className="sr-only peer" />
+                            <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                        </label>
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold text-slate-400 uppercase">Faixa de Aviso (Topo do Site)</label>
+                        <input type="text" value={config.announcement} onChange={e => setConfig({...config, announcement: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded p-3 mt-1 focus:border-white outline-none" />
+                    </div>
+                </div>
+
+                <div className="md:col-span-2 flex justify-end">
+                    <button type="submit" disabled={saving} className="px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold rounded-lg shadow-lg hover:shadow-orange-500/20 transform active:scale-95 transition-all">
+                        {saving ? <i className="fa-solid fa-spinner fa-spin"></i> : 'Salvar Configurações Globais'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+};
 
 const ProductsManager = ({ token, products, refresh, loading }: any) => {
   const [modalOpen, setModalOpen] = useState(false);
