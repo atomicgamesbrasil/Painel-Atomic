@@ -128,16 +128,23 @@ const DashboardLayout = ({ token, onLogout, theme, toggleTheme }: any) => {
     setLoadingProd(true);
     try {
       const resP = await fetch(`${API_BASE_URL}/products`, { headers: { Authorization: `Bearer ${token}` } });
-      if (resP.ok) setProducts(await resP.json());
+      if (resP.ok) {
+        const dataP = await resP.json();
+        // Check if data is array to prevent crashes
+        if (Array.isArray(dataP)) setProducts(dataP);
+      }
       const resB = await fetch(`${API_BASE_URL}/banners`, { headers: { Authorization: `Bearer ${token}` } });
-      if (resB.ok) setBanners(await resB.json());
+      if (resB.ok) {
+        const dataB = await resB.json();
+        if (Array.isArray(dataB)) setBanners(dataB);
+      }
     } catch (e) { console.error(e); } finally { setLoadingProd(false); }
   };
 
   useEffect(() => { fetchData(); }, [token]);
 
   return (
-    <div style={bgStyle} className="min-h-screen flex flex-col text-slate-100 transition-all duration-500">
+    <div style={bgStyle} className="h-screen flex flex-col text-slate-100 transition-all duration-500">
       <nav className={`h-16 border-b border-slate-700 px-6 flex items-center justify-between shadow-lg z-20 ${theme === 'light' ? 'bg-slate-900/95' : 'bg-slate-900'}`}>
         <div className="flex items-center gap-3">
           <img src="https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/atomiclogo.webp" className="h-9 w-9 rounded-full bg-black ring-2 ring-yellow-400/50 animate-spin-slow" />
