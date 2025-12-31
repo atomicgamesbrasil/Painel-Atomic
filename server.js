@@ -27,6 +27,8 @@ const REPO_NAME = 'siteoficial';
 const BRANCH = 'main';
 const PATH_PRODUCTS = 'produtos.json';
 const PATH_BANNERS = 'banners.json';
+const PATH_ORDERS = 'orders.json'; // Novo arquivo para pedidos
+const PATH_CONFIG = 'site-config.json'; // Novo arquivo para configurações
 const PATH_IMG_SITE = 'img site';
 const PATH_IMG_BANNER = 'BANNER SAZIONAL';
 
@@ -51,25 +53,46 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+// --- FUNÇÃO AUXILIAR GENÉRICA DE LEITURA/ESCRITA ---
+async function getFileContent(path) {
+    try {
+        const { data } = await octokit.rest.repos.getContent({
+            owner: REPO_OWNER, repo: REPO_NAME, path: path, ref: BRANCH,
+        });
+        return {
+            content: JSON.parse(Buffer.from(data.content, 'base64').toString('utf-8')),
+            sha: data.sha
+        };
+    } catch (e) {
+        return { content: [], sha: null }; // Retorna array vazio se não existir
+    }
+}
+
+async function saveFileContent(path, content, message, sha = null) {
+    const base64Content = Buffer.from(JSON.stringify(content, null, 2)).toString('base64');
+    const params = {
+        owner: REPO_OWNER, repo: REPO_NAME, path: path, 
+        message: message, content: base64Content, branch: BRANCH
+    };
+    if (sha) params.sha = sha;
+    await octokit.rest.repos.createOrUpdateFileContents(params);
+}
+
 // --- ROTAS DE API ---
 
-// ROTA DE HEALTH CHECK (Importante para o Render)
+// ROTA DE HEALTH CHECK
 app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
 
-// LOGIN COM TRATAMENTO DE ERRO ROBUSTO
+// LOGIN
 app.post('/api/auth/login', (req, res) => {
   try {
     const { password } = req.body || {};
-    
-    // Configuração de senha com Fallback explícito
     const envPassword = process.env.ADMIN_PASSWORD || process.env.SENHA_DE_ADMINISTRADOR;
     const serverPassword = envPassword || 'admin';
 
-    if (!password) {
-      return res.status(400).json({ message: 'Senha não fornecida.' });
-    }
+    if (!password) return res.status(400).json({ message: 'Senha não fornecida.' });
 
     if (password === serverPassword) {
       const user = { role: 'admin' };
@@ -80,43 +103,29 @@ app.post('/api/auth/login', (req, res) => {
       return res.status(401).json({ message: 'Senha incorreta' });
     }
   } catch (error) {
-    console.error("CRITICAL: Erro na rota de login:", error);
-    return res.status(500).json({ message: 'Erro interno de configuração no servidor.' });
+    return res.status(500).json({ message: 'Erro interno.' });
   }
 });
 
-// API Github - Produtos
+// PRODUTOS
 app.get('/api/products', authenticateToken, async (req, res) => {
   try {
-    const { data } = await octokit.rest.repos.getContent({
-      owner: REPO_OWNER, repo: REPO_NAME, path: PATH_PRODUCTS, ref: BRANCH,
-    });
-    const content = Buffer.from(data.content, 'base64').toString('utf-8');
-    res.json(JSON.parse(content));
+    const data = await getFileContent(PATH_PRODUCTS);
+    res.json(data.content);
   } catch (error) {
-    console.error("Erro Github:", error.message);
-    res.status(500).json({ message: 'Erro ao buscar produtos. Verifique o GITHUB_TOKEN.' });
+    res.status(500).json({ message: 'Erro ao buscar produtos.' });
   }
 });
 
 app.post('/api/products', authenticateToken, async (req, res) => {
   try {
     const product = req.body;
-    // Lógica simples de edição/criação em JS puro
     const isEdit = !!product.isEdit;
     delete product.isEdit;
 
-    // Buscar arquivo atual
-    let currentData = { content: [], sha: null };
-    try {
-        const { data } = await octokit.rest.repos.getContent({
-            owner: REPO_OWNER, repo: REPO_NAME, path: PATH_PRODUCTS, ref: BRANCH,
-        });
-        currentData.content = JSON.parse(Buffer.from(data.content, 'base64').toString('utf-8'));
-        currentData.sha = data.sha;
-    } catch(e) {} // Se não existir, cria novo
-
-    let newProducts = [...currentData.content];
+    const currentData = await getFileContent(PATH_PRODUCTS);
+    let newProducts = Array.isArray(currentData.content) ? [...currentData.content] : [];
+    
     const index = newProducts.findIndex(p => p.id === product.id);
     let msg = "";
 
@@ -128,14 +137,7 @@ app.post('/api/products', authenticateToken, async (req, res) => {
       msg = `ADD: ${product.name}`;
     }
 
-    // Salvar
-    const base64Content = Buffer.from(JSON.stringify(newProducts, null, 2)).toString('base64');
-    const params = {
-      owner: REPO_OWNER, repo: REPO_NAME, path: PATH_PRODUCTS, message: msg, content: base64Content, branch: BRANCH
-    };
-    if (currentData.sha) params.sha = currentData.sha;
-
-    await octokit.rest.repos.createOrUpdateFileContents(params);
+    await saveFileContent(PATH_PRODUCTS, newProducts, msg, currentData.sha);
     res.json({ message: 'Salvo com sucesso' });
   } catch (error) {
     res.status(500).json({ message: 'Erro ao salvar: ' + error.message });
@@ -145,32 +147,21 @@ app.post('/api/products', authenticateToken, async (req, res) => {
 app.delete('/api/products/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { data } = await octokit.rest.repos.getContent({
-        owner: REPO_OWNER, repo: REPO_NAME, path: PATH_PRODUCTS, ref: BRANCH,
-    });
-    const products = JSON.parse(Buffer.from(data.content, 'base64').toString('utf-8'));
-    const newProducts = products.filter(p => p.id !== id);
+    const currentData = await getFileContent(PATH_PRODUCTS);
+    const newProducts = currentData.content.filter(p => p.id !== id);
     
-    const base64Content = Buffer.from(JSON.stringify(newProducts, null, 2)).toString('base64');
-    
-    await octokit.rest.repos.createOrUpdateFileContents({
-        owner: REPO_OWNER, repo: REPO_NAME, path: PATH_PRODUCTS, 
-        message: `DEL: ${id}`, content: base64Content, branch: BRANCH, sha: data.sha
-    });
+    await saveFileContent(PATH_PRODUCTS, newProducts, `DEL: ${id}`, currentData.sha);
     res.json({ message: 'Removido' });
   } catch (error) {
     res.status(500).json({ message: 'Erro ao deletar' });
   }
 });
 
-// API Github - Banners
+// BANNERS
 app.get('/api/banners', authenticateToken, async (req, res) => {
   try {
-    const { data } = await octokit.rest.repos.getContent({
-        owner: REPO_OWNER, repo: REPO_NAME, path: PATH_BANNERS, ref: BRANCH,
-    });
-    const content = Buffer.from(data.content, 'base64').toString('utf-8');
-    res.json(JSON.parse(content));
+    const data = await getFileContent(PATH_BANNERS);
+    res.json(data.content);
   } catch (error) {
     res.status(500).json({ message: 'Erro banners' });
   }
@@ -179,22 +170,75 @@ app.get('/api/banners', authenticateToken, async (req, res) => {
 app.post('/api/banners', authenticateToken, async (req, res) => {
   try {
     const bannersData = req.body;
-    const { data } = await octokit.rest.repos.getContent({
-        owner: REPO_OWNER, repo: REPO_NAME, path: PATH_BANNERS, ref: BRANCH,
-    });
-    const base64Content = Buffer.from(JSON.stringify(bannersData, null, 2)).toString('base64');
-    
-    await octokit.rest.repos.createOrUpdateFileContents({
-        owner: REPO_OWNER, repo: REPO_NAME, path: PATH_BANNERS, 
-        message: "UPDATE: Banners", content: base64Content, branch: BRANCH, sha: data.sha
-    });
+    const currentData = await getFileContent(PATH_BANNERS);
+    await saveFileContent(PATH_BANNERS, bannersData, "UPDATE: Banners", currentData.sha);
     res.json({ message: 'Banners salvos' });
   } catch (error) {
     res.status(500).json({ message: 'Erro salvar banners' });
   }
 });
 
-// API Upload
+// PEDIDOS (ORDERS)
+app.get('/api/orders', authenticateToken, async (req, res) => {
+  try {
+    const data = await getFileContent(PATH_ORDERS);
+    // Se orders.json não existir ou estiver vazio, retorna array vazio
+    const content = Array.isArray(data.content) ? data.content : [];
+    res.json(content);
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao buscar pedidos' });
+  }
+});
+
+app.post('/api/orders/update', authenticateToken, async (req, res) => {
+    try {
+        const { orderId, status } = req.body;
+        const currentData = await getFileContent(PATH_ORDERS);
+        let orders = Array.isArray(currentData.content) ? currentData.content : [];
+        
+        const index = orders.findIndex(o => o.id === orderId);
+        if (index !== -1) {
+            orders[index].status = status;
+            await saveFileContent(PATH_ORDERS, orders, `UPDATE ORDER: ${orderId}`, currentData.sha);
+            res.json({ success: true });
+        } else {
+            res.status(404).json({ message: 'Pedido não encontrado' });
+        }
+    } catch (e) {
+        res.status(500).json({ message: 'Erro ao atualizar pedido' });
+    }
+});
+
+// CONFIGURAÇÕES GERAIS (SITE CONFIG)
+app.get('/api/config', authenticateToken, async (req, res) => {
+    try {
+        const data = await getFileContent(PATH_CONFIG);
+        // Default config se não existir
+        const config = data.content.whatsapp ? data.content : {
+            whatsapp: "5511999999999",
+            instagram: "https://instagram.com/atomicgames",
+            maintenance: false,
+            announcement: "Bem vindo à Atomic Games!",
+            ga_id: "" // Google Analytics ID
+        };
+        res.json(config);
+    } catch (error) {
+        res.status(500).json({ message: 'Erro config' });
+    }
+});
+
+app.post('/api/config', authenticateToken, async (req, res) => {
+    try {
+        const newConfig = req.body;
+        const currentData = await getFileContent(PATH_CONFIG);
+        await saveFileContent(PATH_CONFIG, newConfig, "UPDATE: Site Config", currentData.sha);
+        res.json({ message: 'Configurações salvas' });
+    } catch (error) {
+        res.status(500).json({ message: 'Erro salvar config' });
+    }
+});
+
+// UPLOAD DE IMAGEM
 app.post('/api/upload', authenticateToken, async (req, res) => {
   try {
     const { filename, content, folder } = req.body;
@@ -220,19 +264,11 @@ app.post('/api/upload', authenticateToken, async (req, res) => {
   }
 });
 
-// ROTA FINAL: Serve o index.html para qualquer outra rota (SPA)
+// ROTA FINAL SPA
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {
-  console.log(`\n✅ Servidor rodando em http://localhost:${PORT}`);
-  
-  if (process.env.ADMIN_PASSWORD) {
-    console.log("🔒 Autenticação: Variável ADMIN_PASSWORD detectada.");
-  } else if (process.env.SENHA_DE_ADMINISTRADOR) {
-    console.log("🔒 Autenticação: Variável SENHA_DE_ADMINISTRADOR detectada.");
-  } else {
-    console.warn("⚠️ AVISO: Nenhuma variável de senha configurada. Usando senha padrão: 'admin'");
-  }
+  console.log(`\n✅ Servidor Atomic rodando na porta ${PORT}`);
 });
