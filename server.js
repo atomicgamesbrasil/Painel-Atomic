@@ -27,8 +27,9 @@ const REPO_NAME = 'siteoficial';
 const BRANCH = 'main';
 const PATH_PRODUCTS = 'produtos.json';
 const PATH_BANNERS = 'banners.json';
-const PATH_ORDERS = 'orders.json'; // Novo arquivo para pedidos
-const PATH_CONFIG = 'site-config.json'; // Novo arquivo para configurações
+const PATH_ORDERS = 'orders.json';
+const PATH_CONFIG = 'site-config.json';
+const PATH_STATS = 'stats.json'; // Novo arquivo de estatísticas
 const PATH_IMG_SITE = 'img site';
 const PATH_IMG_BANNER = 'BANNER SAZIONAL';
 
@@ -64,7 +65,7 @@ async function getFileContent(path) {
             sha: data.sha
         };
     } catch (e) {
-        return { content: [], sha: null }; // Retorna array vazio se não existir
+        return { content: null, sha: null }; // Retorna null se não existir
     }
 }
 
@@ -111,7 +112,7 @@ app.post('/api/auth/login', (req, res) => {
 app.get('/api/products', authenticateToken, async (req, res) => {
   try {
     const data = await getFileContent(PATH_PRODUCTS);
-    res.json(data.content);
+    res.json(data.content || []);
   } catch (error) {
     res.status(500).json({ message: 'Erro ao buscar produtos.' });
   }
@@ -148,7 +149,7 @@ app.delete('/api/products/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const currentData = await getFileContent(PATH_PRODUCTS);
-    const newProducts = currentData.content.filter(p => p.id !== id);
+    const newProducts = (currentData.content || []).filter(p => p.id !== id);
     
     await saveFileContent(PATH_PRODUCTS, newProducts, `DEL: ${id}`, currentData.sha);
     res.json({ message: 'Removido' });
@@ -161,7 +162,7 @@ app.delete('/api/products/:id', authenticateToken, async (req, res) => {
 app.get('/api/banners', authenticateToken, async (req, res) => {
   try {
     const data = await getFileContent(PATH_BANNERS);
-    res.json(data.content);
+    res.json(data.content || []);
   } catch (error) {
     res.status(500).json({ message: 'Erro banners' });
   }
@@ -182,7 +183,6 @@ app.post('/api/banners', authenticateToken, async (req, res) => {
 app.get('/api/orders', authenticateToken, async (req, res) => {
   try {
     const data = await getFileContent(PATH_ORDERS);
-    // Se orders.json não existir ou estiver vazio, retorna array vazio
     const content = Array.isArray(data.content) ? data.content : [];
     res.json(content);
   } catch (error) {
@@ -209,17 +209,59 @@ app.post('/api/orders/update', authenticateToken, async (req, res) => {
     }
 });
 
+// ANALYTICS / STATS
+// Rota Privada para ler os dados no Dashboard
+app.get('/api/stats', authenticateToken, async (req, res) => {
+    try {
+        const data = await getFileContent(PATH_STATS);
+        const stats = data.content || { total_visits: 0, today_visits: 0, last_updated: new Date().toISOString() };
+        res.json(stats);
+    } catch (error) {
+        res.status(500).json({ message: 'Erro stats' });
+    }
+});
+
+// Rota Pública para incrementar contador (usada pelo script do site)
+app.post('/api/public/track', async (req, res) => {
+    try {
+        // Atenção: Github API tem rate limit e não é instantâneo, mas serve para volumes baixos.
+        const currentData = await getFileContent(PATH_STATS);
+        let stats = currentData.content || { total_visits: 0, today_visits: 0, last_updated: new Date().toISOString() };
+        
+        // Simples lógica de data
+        const today = new Date().toDateString();
+        const lastDate = new Date(stats.last_updated).toDateString();
+        
+        if (today !== lastDate) {
+            stats.today_visits = 1;
+        } else {
+            stats.today_visits = (stats.today_visits || 0) + 1;
+        }
+        stats.total_visits = (stats.total_visits || 0) + 1;
+        stats.last_updated = new Date().toISOString();
+
+        // Salvar background (não esperar a resposta para ser rápido no front)
+        saveFileContent(PATH_STATS, stats, "TRACK: New Visit", currentData.sha).catch(console.error);
+        
+        res.json({ success: true });
+    } catch (e) {
+        console.error(e);
+        res.status(200).json({ ignored: true }); // Falha silenciosa para não quebrar o site
+    }
+});
+
+
 // CONFIGURAÇÕES GERAIS (SITE CONFIG)
 app.get('/api/config', authenticateToken, async (req, res) => {
     try {
         const data = await getFileContent(PATH_CONFIG);
         // Default config se não existir
-        const config = data.content.whatsapp ? data.content : {
+        const config = data.content && data.content.whatsapp ? data.content : {
             whatsapp: "5511999999999",
             instagram: "https://instagram.com/atomicgames",
             maintenance: false,
             announcement: "Bem vindo à Atomic Games!",
-            ga_id: "" // Google Analytics ID
+            ga_id: "" 
         };
         res.json(config);
     } catch (error) {
