@@ -37,6 +37,12 @@ interface SiteConfig {
     ga_id: string;
 }
 
+interface Stats {
+    total_visits: number;
+    today_visits: number;
+    last_updated: string;
+}
+
 // COMPONENTES
 const App = () => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('admin_token'));
@@ -199,7 +205,7 @@ const DashboardLayout = ({ token, onLogout, theme, toggleTheme }: any) => {
         </aside>
 
         <main style={contentStyle} className="flex-1 p-6 overflow-auto custom-scroll relative">
-           {section === 'dashboard' && <DashboardHome products={products} />}
+           {section === 'dashboard' && <DashboardHome token={token} products={products} />}
            {section === 'products' && <ProductsManager token={token} products={products} refresh={fetchData} loading={loadingProd} />}
            {section === 'banners' && <BannersManager token={token} banners={banners} refresh={fetchData} />}
            {section === 'orders' && <OrdersManager token={token} />}
@@ -216,7 +222,16 @@ const NavButton = ({ icon, label, active, onClick }: any) => (
   </button>
 );
 
-const DashboardHome = ({ products }: { products: Product[] }) => {
+const DashboardHome = ({ token, products }: { token: string, products: Product[] }) => {
+    const [stats, setStats] = useState<Stats | null>(null);
+
+    useEffect(() => {
+        fetch(`${API_BASE_URL}/stats`, { headers: { Authorization: `Bearer ${token}` }})
+            .then(res => res.json())
+            .then(data => setStats(data))
+            .catch(() => {});
+    }, []);
+
     // Cálculos reais
     const totalValue = products.reduce((acc, p) => {
         const price = parseFloat(p.price.replace('R$', '').replace('.', '').replace(',', '.').trim()) || 0;
@@ -235,7 +250,7 @@ const DashboardHome = ({ products }: { products: Product[] }) => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <StatCard icon="fa-sack-dollar" label="Valor em Estoque" value={formattedTotal} color="emerald" />
           <StatCard icon="fa-gamepad" label="Produtos Ativos" value={products.length} color="yellow" />
-          <StatCard icon="fa-users" label="Visitas (Mensal)" value="~1.2k" color="blue" isEstimate={true} />
+          <StatCard icon="fa-users" label="Visitas Totais" value={stats?.total_visits || 0} color="blue" />
           
           <div className="glass-panel p-6 rounded-2xl border-l-4 border-purple-500 bg-slate-800/50">
              <div className="flex justify-between items-start">
@@ -254,13 +269,15 @@ const DashboardHome = ({ products }: { products: Product[] }) => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
             <div className="glass-panel p-6 rounded-2xl border border-slate-700/50">
-                <h3 className="text-lg font-bold mb-4 font-[Rajdhani]"><i className="fa-solid fa-chart-simple text-yellow-500 mr-2"></i> Tráfego Recente</h3>
-                <div className="h-48 flex items-center justify-center border-2 border-dashed border-slate-700 rounded-lg bg-slate-800/30">
-                    <div className="text-center">
-                        <i className="fa-brands fa-google-analytics text-4xl text-slate-500 mb-2"></i>
-                        <p className="text-slate-400 text-sm">Integre o Google Analytics nas configurações<br/>para ver gráficos em tempo real.</p>
+                <h3 className="text-lg font-bold mb-4 font-[Rajdhani]"><i className="fa-solid fa-chart-line text-blue-500 mr-2"></i> Métricas em Tempo Real</h3>
+                <div className="h-48 flex flex-col items-center justify-center border border-slate-700 rounded-lg bg-slate-800/30 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent"></div>
+                    <div className="text-center z-10">
+                        <span className="text-5xl font-bold text-white">{stats?.today_visits || 0}</span>
+                        <p className="text-blue-400 font-bold uppercase tracking-widest text-xs mt-2">Visitas Hoje</p>
                     </div>
                 </div>
+                <p className="text-xs text-slate-500 mt-4 text-center">Dados coletados pelo Rastreador Interno Atomic.</p>
             </div>
 
             <div className="glass-panel p-6 rounded-2xl border border-slate-700/50">
@@ -278,8 +295,8 @@ const DashboardHome = ({ products }: { products: Product[] }) => {
                     <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center gap-3">
                          <i className="fa-solid fa-check-circle text-emerald-500"></i>
                          <div>
-                             <p className="text-sm font-bold text-emerald-400">Sistema Atualizado</p>
-                             <p className="text-xs text-slate-400">Versão 2.0 "Completão" ativa.</p>
+                             <p className="text-sm font-bold text-emerald-400">Analytics Ativo</p>
+                             <p className="text-xs text-slate-400">Monitoramento interno funcionando.</p>
                          </div>
                     </div>
                  </div>
@@ -395,8 +412,10 @@ const OrdersManager = ({ token }: { token: string }) => {
 const SettingsManager = ({ token }: { token: string }) => {
     const [config, setConfig] = useState<SiteConfig>({ whatsapp: '', instagram: '', maintenance: false, announcement: '', ga_id: '' });
     const [saving, setSaving] = useState(false);
+    const [baseUrl, setBaseUrl] = useState('');
 
     useEffect(() => {
+        setBaseUrl(window.location.origin);
         fetch(`${API_BASE_URL}/config`, { headers: { Authorization: `Bearer ${token}` } })
             .then(res => res.json())
             .then(data => setConfig(data))
@@ -416,6 +435,11 @@ const SettingsManager = ({ token }: { token: string }) => {
         } catch(e) { alert("Erro ao salvar"); }
         finally { setSaving(false); }
     };
+
+    const trackingCode = `<script>
+  fetch('${baseUrl}/api/public/track', { method: 'POST' })
+    .catch(e => console.log('Analytics error', e));
+<\/script>`;
 
     return (
         <div className="space-y-6 fade-in max-w-4xl">
@@ -440,9 +464,17 @@ const SettingsManager = ({ token }: { token: string }) => {
                 <div className="glass-panel p-6 rounded-xl border border-slate-700 space-y-4">
                     <h3 className="text-lg font-bold text-blue-500 mb-4"><i className="fa-solid fa-chart-line mr-2"></i> Análise de Dados</h3>
                     <div>
-                        <label className="text-xs font-bold text-slate-400 uppercase">Google Analytics ID (G-XXXXXXX)</label>
+                        <label className="text-xs font-bold text-slate-400 uppercase">Google Analytics ID</label>
                         <input type="text" value={config.ga_id} onChange={e => setConfig({...config, ga_id: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded p-3 mt-1 focus:border-blue-500 outline-none" placeholder="G-ABC123456" />
-                        <p className="text-[10px] text-slate-500 mt-1">Insira seu ID de medição para conectar o site ao GA4.</p>
+                        <p className="text-[10px] text-slate-500 mt-1">Opcional, caso queira usar GA externo.</p>
+                    </div>
+                    <div className="pt-2 border-t border-slate-700 mt-2">
+                        <label className="text-xs font-bold text-emerald-400 uppercase block mb-2">Seu Código de Rastreio (Interno)</label>
+                        <div className="relative group">
+                            <textarea readOnly className="w-full bg-slate-950 border border-emerald-900/50 rounded p-2 text-[10px] font-mono text-emerald-500 h-20 outline-none resize-none" value={trackingCode}></textarea>
+                            <button type="button" onClick={() => navigator.clipboard.writeText(trackingCode)} className="absolute top-2 right-2 text-xs bg-emerald-900 text-emerald-100 px-2 py-1 rounded hover:bg-emerald-800">Copiar</button>
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-1">Cole este script no <code>index.html</code> do seu site de vendas.</p>
                     </div>
                 </div>
 
