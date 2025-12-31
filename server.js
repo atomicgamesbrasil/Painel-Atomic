@@ -52,16 +52,18 @@ const authenticateToken = (req, res, next) => {
 
 // --- ROTAS DE API ---
 
+// ROTA DE HEALTH CHECK (Importante para o Render)
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
 app.post('/api/auth/login', (req, res) => {
   const { password } = req.body;
-  const adminPassword = process.env.ADMIN_PASSWORD;
+  
+  // FIX: Adicionado fallback 'admin' para evitar erro 500 se as variáveis não estiverem setadas
+  const serverPassword = process.env.ADMIN_PASSWORD || process.env.SENHA_DE_ADMINISTRADOR || 'admin';
 
-  if (!adminPassword) {
-    console.error("ERRO: ADMIN_PASSWORD não configurada.");
-    return res.status(500).json({ message: 'Erro de configuração no servidor' });
-  }
-
-  if (password === adminPassword) {
+  if (password === serverPassword) {
     const user = { role: 'admin' };
     const secret = process.env.JWT_SECRET || 'dev_secret_key_change_me';
     const accessToken = jwt.sign(user, secret, { expiresIn: '8h' });
@@ -80,7 +82,8 @@ app.get('/api/products', authenticateToken, async (req, res) => {
     const content = Buffer.from(data.content, 'base64').toString('utf-8');
     res.json(JSON.parse(content));
   } catch (error) {
-    res.status(500).json({ message: 'Erro ao buscar produtos' });
+    console.error("Erro Github:", error.message);
+    res.status(500).json({ message: 'Erro ao buscar produtos. Verifique o GITHUB_TOKEN.' });
   }
 });
 
@@ -210,5 +213,8 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`\n✅ Servidor rodando em http://localhost:${PORT}`);
+  if (!process.env.ADMIN_PASSWORD && !process.env.SENHA_DE_ADMINISTRADOR) {
+    console.warn("⚠️ AVISO: Senha não configurada. Usando senha padrão: 'admin'");
+  }
 });
