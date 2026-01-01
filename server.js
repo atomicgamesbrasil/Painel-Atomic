@@ -223,31 +223,12 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
 
 // Rota Pública para incrementar contador (usada pelo script do site)
 app.post('/api/public/track', async (req, res) => {
-    try {
-        // Atenção: Github API tem rate limit e não é instantâneo, mas serve para volumes baixos.
-        const currentData = await getFileContent(PATH_STATS);
-        let stats = currentData.content || { total_visits: 0, today_visits: 0, last_updated: new Date().toISOString() };
-        
-        // Simples lógica de data
-        const today = new Date().toDateString();
-        const lastDate = new Date(stats.last_updated).toDateString();
-        
-        if (today !== lastDate) {
-            stats.today_visits = 1;
-        } else {
-            stats.today_visits = (stats.today_visits || 0) + 1;
-        }
-        stats.total_visits = (stats.total_visits || 0) + 1;
-        stats.last_updated = new Date().toISOString();
-
-        // Salvar background (não esperar a resposta para ser rápido no front)
-        saveFileContent(PATH_STATS, stats, "TRACK: New Visit", currentData.sha).catch(console.error);
-        
-        res.json({ success: true });
-    } catch (e) {
-        console.error(e);
-        res.status(200).json({ ignored: true }); // Falha silenciosa para não quebrar o site
-    }
+    // [CRITICAL FIX] Desativada a escrita no GitHub a cada visita.
+    // Causa anterior de queda do servidor: Rate Limit do GitHub e Concorrência de commits.
+    // O site público estava derrubando o painel admin ao tentar fazer commit a cada pageview.
+    
+    console.log('Analytics Track recebido (Escrita desativada para estabilidade)');
+    res.json({ success: true, mode: 'passive' });
 });
 
 
