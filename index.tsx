@@ -59,6 +59,13 @@ const App = () => {
     localStorage.setItem('atomic_theme', newTheme);
   };
 
+  const handleLogout = () => {
+    setToken(null);
+    localStorage.removeItem('admin_token');
+    // Força recarregamento para limpar estados
+    window.location.reload();
+  };
+
   if (!token) {
     return <LoginScreen onLogin={(t: string) => {
       setToken(t);
@@ -66,10 +73,7 @@ const App = () => {
     }} />;
   }
 
-  return <DashboardLayout token={token} onLogout={() => {
-    setToken(null);
-    localStorage.removeItem('admin_token');
-  }} theme={theme} toggleTheme={toggleTheme} />;
+  return <DashboardLayout token={token} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />;
 };
 
 const LoginScreen = ({ onLogin }: { onLogin: (t: string) => void }) => {
@@ -147,18 +151,34 @@ const DashboardLayout = ({ token, onLogout, theme, toggleTheme }: any) => {
     ? { background: 'rgba(11, 17, 32, 0.92)', backdropFilter: 'blur(8px)' } 
     : { background: '#0f172a' };
 
+  const checkAuth = (res: Response) => {
+    if (res.status === 401 || res.status === 403) {
+      console.warn("Token expirado ou inválido. Realizando logout...");
+      onLogout();
+      return false;
+    }
+    return true;
+  };
+
   const fetchData = async () => {
     setLoadingProd(true);
     try {
+      // Busca Produtos
       const resP = await fetch(`${API_BASE_URL}/products`, { headers: { Authorization: `Bearer ${token}` } });
-      if (resP.ok) {
-        const dataP = await resP.json();
-        if (Array.isArray(dataP)) setProducts(dataP);
-      }
+      if (checkAuth(resP)) {
+         if (resP.ok) {
+            const dataP = await resP.json();
+            if (Array.isArray(dataP)) setProducts(dataP);
+         }
+      } else return; // Para se deslogou
+
+      // Busca Banners
       const resB = await fetch(`${API_BASE_URL}/banners`, { headers: { Authorization: `Bearer ${token}` } });
-      if (resB.ok) {
-        const dataB = await resB.json();
-        if (Array.isArray(dataB)) setBanners(dataB);
+      if (checkAuth(resB)) {
+         if (resB.ok) {
+            const dataB = await resB.json();
+            if (Array.isArray(dataB)) setBanners(dataB);
+         }
       }
     } catch (e) { console.error(e); } finally { setLoadingProd(false); }
   };
@@ -227,8 +247,16 @@ const DashboardHome = ({ token, products }: { token: string, products: Product[]
 
     useEffect(() => {
         fetch(`${API_BASE_URL}/stats`, { headers: { Authorization: `Bearer ${token}` }})
-            .then(res => res.json())
-            .then(data => setStats(data))
+            .then(res => {
+                if(res.status === 401 || res.status === 403) {
+                    // Força logout se token inválido na home
+                    localStorage.removeItem('admin_token');
+                    window.location.reload();
+                    return null;
+                }
+                return res.json();
+            })
+            .then(data => { if(data) setStats(data); })
             .catch(() => {});
     }, []);
 
@@ -334,6 +362,7 @@ const OrdersManager = ({ token }: { token: string }) => {
         setLoading(true);
         try {
             const res = await fetch(`${API_BASE_URL}/orders`, { headers: { Authorization: `Bearer ${token}` } });
+            if (res.status === 401 || res.status === 403) { localStorage.removeItem('admin_token'); window.location.reload(); return; }
             if (res.ok) {
                 const data = await res.json();
                 setOrders(data);
@@ -417,8 +446,11 @@ const SettingsManager = ({ token }: { token: string }) => {
     useEffect(() => {
         setBaseUrl(window.location.origin);
         fetch(`${API_BASE_URL}/config`, { headers: { Authorization: `Bearer ${token}` } })
-            .then(res => res.json())
-            .then(data => setConfig(data))
+            .then(res => {
+                 if (res.status === 401 || res.status === 403) { localStorage.removeItem('admin_token'); window.location.reload(); return null; }
+                 return res.json();
+            })
+            .then(data => { if(data) setConfig(data); })
             .catch(console.error);
     }, []);
 
