@@ -43,6 +43,12 @@ interface Stats {
     last_updated: string;
 }
 
+interface ToastMsg {
+  id: number;
+  type: 'success' | 'error' | 'info';
+  text: string;
+}
+
 // COMPONENTES
 const App = () => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('admin_token'));
@@ -62,7 +68,6 @@ const App = () => {
   const handleLogout = () => {
     setToken(null);
     localStorage.removeItem('admin_token');
-    // Força recarregamento para limpar estados
     window.location.reload();
   };
 
@@ -143,6 +148,16 @@ const DashboardLayout = ({ token, onLogout, theme, toggleTheme }: any) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loadingProd, setLoadingProd] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [toasts, setToasts] = useState<ToastMsg[]>([]);
+
+  // Toast System
+  const showToast = (type: 'success' | 'error' | 'info', text: string) => {
+      const id = Date.now();
+      setToasts(prev => [...prev, { id, type, text }]);
+      setTimeout(() => removeToast(id), 4000);
+  };
+  const removeToast = (id: number) => setToasts(prev => prev.filter(t => t.id !== id));
 
   const bgStyle = theme === 'light' 
     ? { backgroundImage: `url('https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/img1.jpeg')`, backgroundSize: 'cover', backgroundAttachment: 'fixed' }
@@ -186,9 +201,24 @@ const DashboardLayout = ({ token, onLogout, theme, toggleTheme }: any) => {
   useEffect(() => { fetchData(); }, [token]);
 
   return (
-    <div style={bgStyle} className="h-screen flex flex-col text-slate-100 transition-all duration-500">
+    <div style={bgStyle} className="h-screen flex flex-col text-slate-100 transition-all duration-500 relative">
+      
+      {/* TOAST CONTAINER */}
+      <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
+          {toasts.map(t => (
+              <div key={t.id} className={`pointer-events-auto min-w-[300px] p-4 rounded-lg shadow-2xl border-l-4 flex items-center gap-3 bg-slate-900 text-white fade-in ${t.type === 'success' ? 'border-emerald-500' : t.type === 'error' ? 'border-red-500' : 'border-blue-500'}`}>
+                  <i className={`fa-solid ${t.type === 'success' ? 'fa-circle-check text-emerald-500' : t.type === 'error' ? 'fa-circle-exclamation text-red-500' : 'fa-circle-info text-blue-500'}`}></i>
+                  <span className="text-sm font-medium">{t.text}</span>
+                  <button onClick={() => removeToast(t.id)} className="ml-auto text-slate-500 hover:text-white"><i className="fa-solid fa-xmark"></i></button>
+              </div>
+          ))}
+      </div>
+
       <nav className={`h-16 border-b border-slate-700 px-6 flex items-center justify-between shadow-lg z-20 ${theme === 'light' ? 'bg-slate-900/95' : 'bg-slate-900'}`}>
         <div className="flex items-center gap-3">
+          <button className="md:hidden text-slate-300 hover:text-white mr-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+             <i className="fa-solid fa-bars text-xl"></i>
+          </button>
           <img src="https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/atomiclogo.webp" className="h-9 w-9 rounded-full bg-black ring-2 ring-yellow-400/50 animate-spin-slow" />
           <h1 className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent hidden sm:block font-[Rajdhani]">ATOMIC ADMIN</h1>
         </div>
@@ -204,17 +234,26 @@ const DashboardLayout = ({ token, onLogout, theme, toggleTheme }: any) => {
         </div>
       </nav>
 
-      <div className="flex-1 flex overflow-hidden">
-        <aside style={contentStyle} className="w-64 border-r border-slate-700/50 flex-col hidden md:flex transition-all z-10">
-           <div className="p-4 space-y-2">
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* MOBILE SIDEBAR OVERLAY */}
+        {mobileMenuOpen && <div className="fixed inset-0 bg-black/60 z-30 md:hidden backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}></div>}
+        
+        {/* SIDEBAR */}
+        <aside style={contentStyle} className={`fixed inset-y-0 left-0 w-64 border-r border-slate-700/50 flex flex-col z-40 transform transition-transform duration-300 md:relative md:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+           <div className="p-4 space-y-2 flex-1 overflow-y-auto">
+             <div className="md:hidden flex items-center gap-2 mb-6 px-4">
+                 <h2 className="text-xl font-bold font-[Rajdhani] text-white">Menu</h2>
+                 <button className="ml-auto text-slate-400" onClick={() => setMobileMenuOpen(false)}><i className="fa-solid fa-xmark text-xl"></i></button>
+             </div>
+
              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Principal</p>
-             <NavButton icon="fa-chart-pie" label="Visão Geral" active={section === 'dashboard'} onClick={() => setSection('dashboard')} />
-             <NavButton icon="fa-shopping-cart" label="Pedidos" active={section === 'orders'} onClick={() => setSection('orders')} />
+             <NavButton icon="fa-chart-pie" label="Visão Geral" active={section === 'dashboard'} onClick={() => { setSection('dashboard'); setMobileMenuOpen(false); }} />
+             <NavButton icon="fa-shopping-cart" label="Pedidos" active={section === 'orders'} onClick={() => { setSection('orders'); setMobileMenuOpen(false); }} />
              
              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 mt-6">Gestão</p>
-             <NavButton icon="fa-box-open" label="Produtos" active={section === 'products'} onClick={() => setSection('products')} />
-             <NavButton icon="fa-images" label="Banners" active={section === 'banners'} onClick={() => setSection('banners')} />
-             <NavButton icon="fa-sliders" label="Configurações" active={section === 'settings'} onClick={() => setSection('settings')} />
+             <NavButton icon="fa-box-open" label="Produtos" active={section === 'products'} onClick={() => { setSection('products'); setMobileMenuOpen(false); }} />
+             <NavButton icon="fa-images" label="Banners" active={section === 'banners'} onClick={() => { setSection('banners'); setMobileMenuOpen(false); }} />
+             <NavButton icon="fa-sliders" label="Configurações" active={section === 'settings'} onClick={() => { setSection('settings'); setMobileMenuOpen(false); }} />
            </div>
            <div className="mt-auto p-4 border-t border-slate-700/50">
              <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-800/50 border border-slate-700/50">
@@ -224,12 +263,12 @@ const DashboardLayout = ({ token, onLogout, theme, toggleTheme }: any) => {
            </div>
         </aside>
 
-        <main style={contentStyle} className="flex-1 p-6 overflow-auto custom-scroll relative">
+        <main style={contentStyle} className="flex-1 p-4 md:p-6 overflow-auto custom-scroll relative w-full">
            {section === 'dashboard' && <DashboardHome token={token} products={products} />}
-           {section === 'products' && <ProductsManager token={token} products={products} refresh={fetchData} loading={loadingProd} />}
-           {section === 'banners' && <BannersManager token={token} banners={banners} refresh={fetchData} />}
-           {section === 'orders' && <OrdersManager token={token} />}
-           {section === 'settings' && <SettingsManager token={token} />}
+           {section === 'products' && <ProductsManager token={token} products={products} refresh={fetchData} loading={loadingProd} toast={showToast} />}
+           {section === 'banners' && <BannersManager token={token} banners={banners} refresh={fetchData} toast={showToast} />}
+           {section === 'orders' && <OrdersManager token={token} toast={showToast} />}
+           {section === 'settings' && <SettingsManager token={token} toast={showToast} />}
         </main>
       </div>
     </div>
@@ -249,7 +288,6 @@ const DashboardHome = ({ token, products }: { token: string, products: Product[]
         fetch(`${API_BASE_URL}/stats`, { headers: { Authorization: `Bearer ${token}` }})
             .then(res => {
                 if(res.status === 401 || res.status === 403) {
-                    // Força logout se token inválido na home
                     localStorage.removeItem('admin_token');
                     window.location.reload();
                     return null;
@@ -260,22 +298,21 @@ const DashboardHome = ({ token, products }: { token: string, products: Product[]
             .catch(() => {});
     }, []);
 
-    // Cálculos reais
     const totalValue = products.reduce((acc, p) => {
         const price = parseFloat(p.price.replace('R$', '').replace('.', '').replace(',', '.').trim()) || 0;
         return acc + price;
     }, 0);
 
     const formattedTotal = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValue);
-    const lowStock = products.length < 5; // Regra de negócio simples
+    const lowStock = products.length < 5;
 
     return (
-      <div className="space-y-6 fade-in">
-        <header className="mb-8">
-          <h2 className="text-4xl font-bold font-[Rajdhani] mb-2">Painel de Controle</h2>
-          <p className="text-slate-400">Resumo financeiro e operacional da Atomic Games.</p>
+      <div className="space-y-6 fade-in pb-10">
+        <header className="mb-6">
+          <h2 className="text-3xl md:text-4xl font-bold font-[Rajdhani] mb-2">Painel de Controle</h2>
+          <p className="text-slate-400 text-sm md:text-base">Resumo financeiro e operacional da Atomic Games.</p>
         </header>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
           <StatCard icon="fa-sack-dollar" label="Valor em Estoque" value={formattedTotal} color="emerald" />
           <StatCard icon="fa-gamepad" label="Produtos Ativos" value={products.length} color="yellow" />
           <StatCard icon="fa-users" label="Visitas Totais" value={stats?.total_visits || 0} color="blue" />
@@ -354,7 +391,7 @@ const StatCard = ({ icon, label, value, color, isEstimate }: any) => (
   </div>
 );
 
-const OrdersManager = ({ token }: { token: string }) => {
+const OrdersManager = ({ token, toast }: any) => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -377,8 +414,11 @@ const OrdersManager = ({ token }: { token: string }) => {
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ orderId: id, status: newStatus })
             });
-            if (res.ok) fetchOrders();
-        } catch(e) { alert("Erro ao atualizar"); }
+            if (res.ok) {
+                fetchOrders();
+                toast('success', 'Status do pedido atualizado!');
+            }
+        } catch(e) { toast('error', 'Falha ao atualizar status'); }
     };
 
     useEffect(() => { fetchOrders(); }, []);
@@ -394,13 +434,13 @@ const OrdersManager = ({ token }: { token: string }) => {
     };
 
     return (
-        <div className="space-y-6 fade-in">
+        <div className="space-y-6 fade-in pb-10">
              <header className="flex justify-between items-end pb-4 border-b border-slate-700/50">
                 <div><h2 className="text-3xl font-bold font-[Rajdhani]">Pedidos</h2><p className="text-slate-400">Gerenciamento de vendas e solicitações.</p></div>
                 <button onClick={fetchOrders} className="text-slate-400 hover:text-white"><i className="fa-solid fa-sync"></i></button>
             </header>
             
-            <div className="glass-panel rounded-xl overflow-hidden border border-slate-700/50 shadow-xl">
+            <div className="glass-panel rounded-xl overflow-hidden border border-slate-700/50 shadow-xl overflow-x-auto">
                  {orders.length === 0 ? (
                      <div className="p-12 text-center text-slate-500">
                          <i className="fa-solid fa-box-open text-4xl mb-3 opacity-50"></i>
@@ -408,7 +448,7 @@ const OrdersManager = ({ token }: { token: string }) => {
                          <p className="text-xs mt-2">Os pedidos aparecerão aqui quando o arquivo orders.json for populado.</p>
                      </div>
                  ) : (
-                    <table className="w-full text-left">
+                    <table className="w-full text-left whitespace-nowrap md:whitespace-normal">
                         <thead className="bg-slate-900/80 text-slate-400 text-xs uppercase">
                             <tr><th className="p-4">ID</th><th className="p-4">Cliente</th><th className="p-4">Itens</th><th className="p-4">Total</th><th className="p-4">Status</th><th className="p-4">Ação</th></tr>
                         </thead>
@@ -438,7 +478,7 @@ const OrdersManager = ({ token }: { token: string }) => {
     );
 };
 
-const SettingsManager = ({ token }: { token: string }) => {
+const SettingsManager = ({ token, toast }: any) => {
     const [config, setConfig] = useState<SiteConfig>({ whatsapp: '', instagram: '', maintenance: false, announcement: '', ga_id: '' });
     const [saving, setSaving] = useState(false);
     const [baseUrl, setBaseUrl] = useState('');
@@ -463,8 +503,8 @@ const SettingsManager = ({ token }: { token: string }) => {
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify(config)
             });
-            if(res.ok) alert("Configurações atualizadas!");
-        } catch(e) { alert("Erro ao salvar"); }
+            if(res.ok) toast('success', "Configurações atualizadas!");
+        } catch(e) { toast('error', "Erro ao salvar configurações"); }
         finally { setSaving(false); }
     };
 
@@ -474,7 +514,7 @@ const SettingsManager = ({ token }: { token: string }) => {
 <\/script>`;
 
     return (
-        <div className="space-y-6 fade-in max-w-4xl">
+        <div className="space-y-6 fade-in max-w-4xl pb-10">
              <header className="pb-4 border-b border-slate-700/50">
                 <h2 className="text-3xl font-bold font-[Rajdhani]">Configurações da Loja</h2>
                 <p className="text-slate-400">Controle global de informações e status do site.</p>
@@ -504,7 +544,7 @@ const SettingsManager = ({ token }: { token: string }) => {
                         <label className="text-xs font-bold text-emerald-400 uppercase block mb-2">Seu Código de Rastreio (Interno)</label>
                         <div className="relative group">
                             <textarea readOnly className="w-full bg-slate-950 border border-emerald-900/50 rounded p-2 text-[10px] font-mono text-emerald-500 h-20 outline-none resize-none" value={trackingCode}></textarea>
-                            <button type="button" onClick={() => navigator.clipboard.writeText(trackingCode)} className="absolute top-2 right-2 text-xs bg-emerald-900 text-emerald-100 px-2 py-1 rounded hover:bg-emerald-800">Copiar</button>
+                            <button type="button" onClick={() => { navigator.clipboard.writeText(trackingCode); toast('info', 'Código copiado!') }} className="absolute top-2 right-2 text-xs bg-emerald-900 text-emerald-100 px-2 py-1 rounded hover:bg-emerald-800">Copiar</button>
                         </div>
                         <p className="text-[10px] text-slate-500 mt-1">Cole este script no <code>index.html</code> do seu site de vendas.</p>
                     </div>
@@ -540,7 +580,7 @@ const SettingsManager = ({ token }: { token: string }) => {
     );
 };
 
-const ProductsManager = ({ token, products, refresh, loading }: any) => {
+const ProductsManager = ({ token, products, refresh, loading, toast }: any) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -549,14 +589,19 @@ const ProductsManager = ({ token, products, refresh, loading }: any) => {
     if (!confirm('Excluir produto?')) return;
     try {
       const res = await fetch(`${API_BASE_URL}/products/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) refresh(); else alert('Erro ao excluir');
-    } catch(e) { alert('Erro de rede'); }
+      if (res.ok) {
+          refresh();
+          toast('success', 'Produto removido com sucesso');
+      } else {
+          toast('error', 'Erro ao excluir');
+      }
+    } catch(e) { toast('error', 'Erro de rede'); }
   };
 
   const filtered = products.filter((p: Product) => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.category.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
-    <div className="space-y-6 fade-in">
+    <div className="space-y-6 fade-in pb-10">
       <header className="flex flex-col md:flex-row justify-between md:items-end gap-4 pb-4 border-b border-slate-700/50">
           <div><h2 className="text-3xl font-bold font-[Rajdhani]">Catálogo</h2><p className="text-slate-400">Gerenciamento de estoque.</p></div>
           <button onClick={() => { setEditItem(null); setModalOpen(true); }} className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black px-6 py-3 rounded-lg font-bold shadow-lg flex items-center gap-2"><i className="fa-solid fa-plus-circle"></i> Novo Produto</button>
@@ -565,8 +610,8 @@ const ProductsManager = ({ token, products, refresh, loading }: any) => {
         <i className="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500"></i>
         <input type="text" placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white placeholder-slate-500 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all" />
       </div>
-      <div className="glass-panel rounded-xl overflow-hidden border border-slate-700/50 shadow-xl">
-        <table className="w-full text-left">
+      <div className="glass-panel rounded-xl overflow-hidden border border-slate-700/50 shadow-xl overflow-x-auto">
+        <table className="w-full text-left whitespace-nowrap md:whitespace-normal">
           <thead className="bg-slate-900/80 text-slate-400 text-xs uppercase tracking-wider">
              <tr><th className="p-5 font-bold">Item</th><th className="p-5 font-bold">Nome</th><th className="p-5 font-bold">Categoria</th><th className="p-5 font-bold">Preço</th><th className="p-5 font-bold text-right">Ações</th></tr>
           </thead>
@@ -584,12 +629,12 @@ const ProductsManager = ({ token, products, refresh, loading }: any) => {
           </tbody>
         </table>
       </div>
-      {modalOpen && <ProductModal token={token} item={editItem} onClose={() => setModalOpen(false)} onSave={() => { setModalOpen(false); refresh(); }} />}
+      {modalOpen && <ProductModal token={token} item={editItem} onClose={() => setModalOpen(false)} onSave={() => { setModalOpen(false); refresh(); }} toast={toast} />}
     </div>
   );
 };
 
-const ProductModal = ({ token, item, onClose, onSave }: any) => {
+const ProductModal = ({ token, item, onClose, onSave, toast }: any) => {
   const [formData, setFormData] = useState({ id: item?.id || '', name: item?.name || '', price: item?.price || '', category: item?.category || 'games', desc: item?.desc || '', image: item?.image || '' });
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
@@ -611,8 +656,13 @@ const ProductModal = ({ token, item, onClose, onSave }: any) => {
       const payload = { ...formData, id: formData.id || Date.now().toString(), image: finalImg, isEdit: !!item };
       if(!payload.price.includes('R$')) payload.price = `R$ ${payload.price}`;
       const resProd = await fetch(`${API_BASE_URL}/products`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
-      if(resProd.ok) onSave(); else alert("Erro ao salvar produto");
-    } catch (err: any) { alert(err.message); } finally { setSaving(false); }
+      if(resProd.ok) {
+          onSave();
+          toast('success', item ? 'Produto atualizado!' : 'Produto criado!');
+      } else {
+          toast('error', "Erro ao salvar produto");
+      }
+    } catch (err: any) { toast('error', err.message); } finally { setSaving(false); }
   };
 
   return (
@@ -634,7 +684,7 @@ const ProductModal = ({ token, item, onClose, onSave }: any) => {
   );
 };
 
-const BannersManager = ({ token, banners, refresh }: any) => {
+const BannersManager = ({ token, banners, refresh, toast }: any) => {
   const [b1File, setB1File] = useState<File|null>(null);
   const [b2File, setB2File] = useState<File|null>(null);
   const [saving, setSaving] = useState(false);
@@ -662,12 +712,15 @@ const BannersManager = ({ token, banners, refresh }: any) => {
       }
       const newData = [{ id: 'banner_1', image: name1, link: '#store' }, { id: 'banner_2', image: name2, link: '#store' }];
       const res = await fetch(`${API_BASE_URL}/banners`, { method: 'POST', headers: {'Content-Type': 'application/json', Authorization: `Bearer ${token}`}, body: JSON.stringify(newData) });
-      if(res.ok) { alert('Banners atualizados!'); refresh(); setB1File(null); setB2File(null); }
-    } catch (e) { alert('Erro ao salvar banners'); } finally { setSaving(false); }
+      if(res.ok) { 
+          toast('success', 'Banners atualizados!'); 
+          refresh(); setB1File(null); setB2File(null); 
+      }
+    } catch (e) { toast('error', 'Erro ao salvar banners'); } finally { setSaving(false); }
   };
 
   return (
-    <div className="space-y-6 fade-in">
+    <div className="space-y-6 fade-in pb-10">
        <header className="mb-8 pb-4 border-b border-slate-700/50"><h2 className="text-3xl font-bold font-[Rajdhani]">Banners Sazonais</h2></header>
        <div className="grid grid-cols-1 md:grid-cols-2 gap-8"><BannerEditCard id="1" color="yellow" currentImg={getBannerUrl(b1.image)} file={b1File} setFile={setB1File} /><BannerEditCard id="2" color="orange" currentImg={getBannerUrl(b2.image)} file={b2File} setFile={setB2File} /></div>
        <div className="flex justify-end pt-6"><button onClick={handleSave} disabled={saving} className="px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold rounded-lg shadow-lg hover:shadow-orange-500/20">{saving ? 'Salvando...' : 'Salvar Alterações'}</button></div>
