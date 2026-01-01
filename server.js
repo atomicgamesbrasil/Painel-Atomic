@@ -22,16 +22,25 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.static(__dirname));
 
 // --- CONFIGURAÇÃO DO REPOSITÓRIO ---
+// VERIFIQUE SE OS NOMES ABAIXO ESTÃO IGUAIS AO SEU GITHUB
 const REPO_OWNER = 'atomicgamesbrasil';
 const REPO_NAME = 'siteoficial';
 const BRANCH = 'main';
-const PATH_PRODUCTS = 'produtos.json';
+
+// ARQUIVOS (Devem existir na raiz do repo ou pasta especificada)
+const PATH_PRODUCTS = 'produtos.json'; // Se no github for products.json, mude aqui.
 const PATH_BANNERS = 'banners.json';
 const PATH_ORDERS = 'orders.json';
 const PATH_CONFIG = 'site-config.json';
-const PATH_STATS = 'stats.json'; // Novo arquivo de estatísticas
+const PATH_STATS = 'stats.json';
 const PATH_IMG_SITE = 'img site';
 const PATH_IMG_BANNER = 'BANNER SAZIONAL';
+
+// Verifica Token na Inicialização
+if (!process.env.GITHUB_TOKEN) {
+    console.error("❌ [CRÍTICO] GITHUB_TOKEN não encontrado nas Variáveis de Ambiente do Render!");
+    console.error("   O painel vai carregar, mas não mostrará nenhum dado.");
+}
 
 // Inicializa Octokit
 const octokit = new Octokit({ 
@@ -55,17 +64,33 @@ const authenticateToken = (req, res, next) => {
 };
 
 // --- FUNÇÃO AUXILIAR GENÉRICA DE LEITURA/ESCRITA ---
-async function getFileContent(path) {
+async function getFileContent(filePath) {
     try {
         const { data } = await octokit.rest.repos.getContent({
-            owner: REPO_OWNER, repo: REPO_NAME, path: path, ref: BRANCH,
+            owner: REPO_OWNER, repo: REPO_NAME, path: filePath, ref: BRANCH,
         });
-        return {
-            content: JSON.parse(Buffer.from(data.content, 'base64').toString('utf-8')),
-            sha: data.sha
-        };
+        
+        // Verifica se é arquivo e tem conteúdo
+        if (data.content) {
+             return {
+                content: JSON.parse(Buffer.from(data.content, 'base64').toString('utf-8')),
+                sha: data.sha
+            };
+        }
+        return { content: [], sha: data.sha }; // Arquivo existe mas vazio
+
     } catch (e) {
-        return { content: null, sha: null }; // Retorna null se não existir
+        // LOGS DE DIAGNÓSTICO PARA O RENDER
+        console.error(`⚠️ [GITHUB ERROR] Falha ao ler arquivo: ${filePath}`);
+        if (e.status === 404) {
+            console.error(`   ↳ Motivo: Arquivo não encontrado (404). Verifique se '${filePath}' existe no repositório '${REPO_NAME}'.`);
+        } else if (e.status === 401 || e.status === 403) {
+            console.error(`   ↳ Motivo: Permissão negada (${e.status}). Verifique o GITHUB_TOKEN.`);
+        } else {
+            console.error(`   ↳ Motivo: ${e.message}`);
+        }
+        
+        return { content: null, sha: null }; 
     }
 }
 
@@ -112,8 +137,10 @@ app.post('/api/auth/login', (req, res) => {
 app.get('/api/products', authenticateToken, async (req, res) => {
   try {
     const data = await getFileContent(PATH_PRODUCTS);
+    // Se content for null, retorna array vazio para não quebrar o front
     res.json(data.content || []);
   } catch (error) {
+    console.error("Erro rota produtos:", error);
     res.status(500).json({ message: 'Erro ao buscar produtos.' });
   }
 });
@@ -224,10 +251,8 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
 // Rota Pública para incrementar contador (usada pelo script do site)
 app.post('/api/public/track', async (req, res) => {
     // [CRITICAL FIX] Desativada a escrita no GitHub a cada visita.
-    // Causa anterior de queda do servidor: Rate Limit do GitHub e Concorrência de commits.
-    // O site público estava derrubando o painel admin ao tentar fazer commit a cada pageview.
-    
-    console.log('Analytics Track recebido (Escrita desativada para estabilidade)');
+    // O painel apenas registra log, não faz commit para evitar queda do servidor.
+    console.log('Analytics Track recebido (Modo Passivo)');
     res.json({ success: true, mode: 'passive' });
 });
 
@@ -294,4 +319,5 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`\n✅ Servidor Atomic rodando na porta ${PORT}`);
+  console.log(`🔍 Monitorando repositório: ${REPO_OWNER}/${REPO_NAME}`);
 });
