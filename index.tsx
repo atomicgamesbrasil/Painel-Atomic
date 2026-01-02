@@ -259,7 +259,7 @@ const DashboardLayout = ({ token, onLogout, theme, toggleTheme }: any) => {
            <div className="mt-auto p-4 border-t border-slate-700/50">
              <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-800/50 border border-slate-700/50">
                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-500 to-orange-600 flex items-center justify-center text-xs font-bold text-black">A</div>
-               <div><p className="text-sm font-bold leading-tight">Master Admin</p><p className="text-[10px] text-emerald-500">● Online</p></div>
+               <div><p className="text-sm font-bold leading-tight">Master Admin</p><p className="text-xs text-emerald-500">● Online</p></div>
              </div>
            </div>
         </aside>
@@ -337,18 +337,18 @@ const VisualChart = ({ data, color = "#3b82f6", label }: any) => {
 const DashboardHome = ({ token, products }: { token: string, products: Product[] }) => {
     const [stats, setStats] = useState<Stats | null>(null);
 
-    useEffect(() => {
+    const fetchStats = () => {
         fetch(`${API_BASE_URL}/stats`, { headers: { Authorization: `Bearer ${token}` }})
-            .then(res => {
-                if(res.status === 401 || res.status === 403) {
-                    localStorage.removeItem('admin_token');
-                    window.location.reload();
-                    return null;
-                }
-                return res.json();
-            })
+            .then(res => res.json())
             .then(data => { if(data) setStats(data); })
             .catch(() => {});
+    };
+
+    useEffect(() => {
+        fetchStats();
+        // AUTO REFRESH STATS A CADA 30 SEGUNDOS
+        const interval = setInterval(fetchStats, 30000);
+        return () => clearInterval(interval);
     }, []);
 
     const totalValue = products.reduce((acc, p) => {
@@ -358,33 +358,46 @@ const DashboardHome = ({ token, products }: { token: string, products: Product[]
 
     const formattedTotal = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValue);
     const lowStock = products.length < 5;
-
-    // Simulação de dados para o gráfico (já que não temos histórico real ainda)
-    const simulatedVisits = [45, 52, 38, 65, 72, 85, stats?.today_visits || 90];
+    const simulatedVisits = [45, 52, 38, 65, 72, 85, stats?.today_visits || 0];
 
     return (
       <div className="space-y-6 fade-in pb-10">
-        <header className="mb-6">
-          <h2 className="text-3xl md:text-4xl font-bold font-[Rajdhani] mb-2">Painel de Controle</h2>
-          <p className="text-slate-400 text-sm md:text-base">Resumo financeiro e operacional da Atomic Games.</p>
+        <header className="mb-6 flex justify-between items-end">
+          <div>
+            <h2 className="text-3xl md:text-4xl font-bold font-[Rajdhani] mb-2">Painel de Controle</h2>
+            <p className="text-slate-400 text-sm md:text-base">Resumo financeiro e operacional da Atomic Games.</p>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-emerald-500 font-bold bg-emerald-500/10 px-3 py-1 rounded-full animate-pulse">
+            <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+            Ao Vivo
+          </div>
         </header>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
-          <StatCard icon="fa-sack-dollar" label="Valor em Estoque" value={formattedTotal} color="emerald" />
+          <StatCard icon="fa-money-bill-wave" label="Valor em Estoque" value={formattedTotal} color="emerald" />
           <StatCard icon="fa-gamepad" label="Produtos Ativos" value={products.length} color="yellow" />
           <StatCard icon="fa-users" label="Visitas Totais" value={stats?.total_visits || 0} color="blue" />
           
-          <div className="glass-panel p-6 rounded-2xl border-l-4 border-purple-500 bg-slate-800/50">
-             <div className="flex justify-between items-start">
-                 <div>
-                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Status da Loja</p>
-                    <h3 className="text-xl font-bold mt-1 text-purple-400">Operando</h3>
+          <div className="glass-panel p-6 rounded-2xl border-l-4 border-purple-500 bg-slate-800/50 relative overflow-hidden group">
+             {/* BACKGROUND WATERMARK ICON */}
+             <div className="absolute right-[-10px] top-[-10px] opacity-[0.05] group-hover:opacity-[0.1] transition-all transform group-hover:scale-110 duration-500">
+                <i className="fa-solid fa-server text-9xl text-white"></i>
+             </div>
+             
+             <div className="relative z-10">
+                 <div className="flex justify-between items-start">
+                     <div>
+                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Status da Loja</p>
+                        <h3 className="text-xl font-bold mt-1 text-purple-400">Operando</h3>
+                     </div>
+                     <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400">
+                         <i className="fa-solid fa-server"></i>
+                     </div>
                  </div>
-                 <i className="fa-solid fa-server text-2xl text-purple-500/50"></i>
+                 <div className="mt-4 w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                    <div className="bg-purple-500 h-full w-[98%]"></div>
+                 </div>
+                 <p className="text-[10px] text-right mt-1 text-slate-500">Uptime 99.9%</p>
              </div>
-             <div className="mt-4 w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-purple-500 h-full w-[98%]"></div>
-             </div>
-             <p className="text-[10px] text-right mt-1 text-slate-500">Uptime 99.9%</p>
           </div>
         </div>
 
@@ -450,8 +463,8 @@ const OrdersManager = ({ token, toast }: any) => {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
 
-    const fetchOrders = async () => {
-        setLoading(true);
+    const fetchOrders = async (silent = false) => {
+        if(!silent) setLoading(true);
         try {
             const res = await fetch(`${API_BASE_URL}/orders`, { headers: { Authorization: `Bearer ${token}` } });
             if (res.status === 401 || res.status === 403) { localStorage.removeItem('admin_token'); window.location.reload(); return; }
@@ -459,7 +472,7 @@ const OrdersManager = ({ token, toast }: any) => {
                 const data = await res.json();
                 setOrders(data);
             }
-        } catch(e) { console.error(e); } finally { setLoading(false); }
+        } catch(e) { console.error(e); } finally { if(!silent) setLoading(false); }
     };
 
     const updateStatus = async (id: string, newStatus: string) => {
@@ -470,13 +483,18 @@ const OrdersManager = ({ token, toast }: any) => {
                 body: JSON.stringify({ orderId: id, status: newStatus })
             });
             if (res.ok) {
-                fetchOrders();
+                fetchOrders(true);
                 toast('success', 'Status do pedido atualizado!');
             }
         } catch(e) { toast('error', 'Falha ao atualizar status'); }
     };
 
-    useEffect(() => { fetchOrders(); }, []);
+    useEffect(() => { 
+        fetchOrders();
+        // AUTO REFRESH PEDIDOS A CADA 30 SEGUNDOS
+        const interval = setInterval(() => fetchOrders(true), 30000);
+        return () => clearInterval(interval);
+    }, []);
 
     const getStatusColor = (s: string) => {
         switch(s) {
@@ -494,7 +512,7 @@ const OrdersManager = ({ token, toast }: any) => {
                 <div><h2 className="text-3xl font-bold font-[Rajdhani]">Pedidos</h2><p className="text-slate-400">Gerenciamento de vendas e solicitações.</p></div>
                 <div className="flex gap-3">
                    <button onClick={() => setShowCreateModal(true)} className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white px-4 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 text-sm"><i className="fa-solid fa-plus"></i> Novo Pedido</button>
-                   <button onClick={fetchOrders} className="text-slate-400 hover:text-white px-2"><i className="fa-solid fa-sync"></i></button>
+                   <button onClick={() => fetchOrders(false)} className="text-slate-400 hover:text-white px-2"><i className="fa-solid fa-sync"></i></button>
                 </div>
             </header>
             
@@ -537,7 +555,7 @@ const OrdersManager = ({ token, toast }: any) => {
             {/* INVOICE MODAL */}
             {selectedOrder && <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />}
             {/* CREATE MODAL */}
-            {showCreateModal && <OrderCreateModal token={token} onClose={() => setShowCreateModal(false)} onSave={fetchOrders} toast={toast} />}
+            {showCreateModal && <OrderCreateModal token={token} onClose={() => setShowCreateModal(false)} onSave={() => fetchOrders(false)} toast={toast} />}
         </div>
     );
 };
