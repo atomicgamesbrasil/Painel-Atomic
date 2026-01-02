@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
+import { createPortal } from 'react-dom';
 
 // CONFIG
 const API_BASE_URL = "/api";
@@ -568,8 +569,8 @@ const OrderCreateModal = ({ token, onClose, onSave, toast }: any) => {
         finally { setSaving(false); }
     };
 
-    return (
-        <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center backdrop-blur-sm p-4">
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center backdrop-blur-sm p-4">
              <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl shadow-2xl p-6">
                  <h3 className="text-xl font-bold font-[Rajdhani] mb-4 text-white">Novo Pedido Manual</h3>
                  <form onSubmit={handleSubmit} className="space-y-4">
@@ -602,13 +603,14 @@ const OrderCreateModal = ({ token, onClose, onSave, toast }: any) => {
                      </div>
                  </form>
              </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
 const OrderDetailsModal = ({ order, onClose }: { order: Order, onClose: () => void }) => {
-    return (
-        <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center backdrop-blur-sm p-4 animate-in fade-in zoom-in duration-300">
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center backdrop-blur-sm p-4 animate-in fade-in zoom-in duration-300">
             <div className="bg-white text-black w-full max-w-2xl rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" id="print-area">
                 <div className="p-6 border-b border-gray-200 flex justify-between items-start bg-gray-50">
                     <div>
@@ -667,7 +669,8 @@ const OrderDetailsModal = ({ order, onClose }: { order: Order, onClose: () => vo
                     <button onClick={onClose} className="px-6 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded font-bold transition-colors">Fechar</button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
@@ -872,8 +875,8 @@ const ProductModal = ({ token, item, onClose, onSave, toast }: any) => {
     } catch (err: any) { toast('error', err.message); } finally { setSaving(false); }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center backdrop-blur-sm p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center backdrop-blur-sm p-4">
       <div className="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
          <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-800/50 rounded-t-2xl"><h3 className="text-lg font-bold flex items-center gap-2"><i className="fa-solid fa-pen-to-square text-yellow-500"></i> {item ? 'Editar' : 'Novo'} Produto</h3><button onClick={onClose}><i className="fa-solid fa-xmark text-xl text-slate-400"></i></button></div>
          <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto custom-scroll">
@@ -898,7 +901,8 @@ const ProductModal = ({ token, item, onClose, onSave, toast }: any) => {
             <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={onClose} className="px-5 py-2 text-slate-400 hover:text-white">Cancelar</button><button type="submit" disabled={saving} className="px-8 py-2 bg-yellow-500 text-black font-bold rounded-lg shadow-lg hover:bg-orange-500">{saving ? 'Salvando...' : 'Salvar Produto'}</button></div>
          </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
