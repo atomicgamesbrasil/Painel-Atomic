@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 
 // CONFIG
@@ -761,6 +761,20 @@ const ProductModal = ({ token, item, onClose, onSave, toast }: any) => {
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const insertTag = (tag: string) => {
+     const textarea = document.getElementById('product-desc') as HTMLTextAreaElement;
+     if(!textarea) return;
+     
+     const start = textarea.selectionStart;
+     const end = textarea.selectionEnd;
+     const text = formData.desc;
+     const newText = text.substring(0, start) + tag + text.substring(end);
+     setFormData({...formData, desc: newText});
+     
+     // Pequeno delay para focar e posicionar cursor (opcional, simplificado aqui)
+     setTimeout(() => textarea.focus(), 0);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -797,7 +811,18 @@ const ProductModal = ({ token, item, onClose, onSave, toast }: any) => {
               <div><label className="text-xs font-bold text-slate-400 uppercase">Preço</label><input required className="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} /></div>
               <div><label className="text-xs font-bold text-slate-400 uppercase">Categoria</label><select className="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-white focus:border-yellow-500" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}><option value="games">Jogos</option><option value="console">Consoles</option><option value="acessorios">Acessórios</option><option value="hardware">Hardware</option></select></div>
               <div className="col-span-2"><label className="text-xs font-bold text-slate-400 uppercase">Imagem</label><input type="file" accept="image/*" onChange={e => setFile(e.target.files?.[0] || null)} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-500 file:text-black hover:file:bg-yellow-400"/></div>
-              <div className="col-span-2"><label className="text-xs font-bold text-slate-400 uppercase">Descrição</label><textarea rows={3} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" value={formData.desc} onChange={e => setFormData({...formData, desc: e.target.value})}></textarea></div>
+              
+              <div className="col-span-2">
+                  <div className="flex justify-between items-end mb-1">
+                      <label className="text-xs font-bold text-slate-400 uppercase">Descrição</label>
+                      <div className="flex gap-1">
+                          <button type="button" onClick={() => insertTag('<b></b>')} className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded border border-slate-600" title="Negrito"><b>B</b></button>
+                          <button type="button" onClick={() => insertTag('<br/>')} className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded border border-slate-600" title="Quebra de Linha">↵</button>
+                          <button type="button" onClick={() => insertTag('• ')} className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded border border-slate-600" title="Lista">•</button>
+                      </div>
+                  </div>
+                  <textarea id="product-desc" rows={4} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-white focus:border-yellow-500 outline-none font-mono text-sm" value={formData.desc} onChange={e => setFormData({...formData, desc: e.target.value})}></textarea>
+              </div>
             </div>
             <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={onClose} className="px-5 py-2 text-slate-400 hover:text-white">Cancelar</button><button type="submit" disabled={saving} className="px-8 py-2 bg-yellow-500 text-black font-bold rounded-lg shadow-lg hover:bg-orange-500">{saving ? 'Salvando...' : 'Salvar Produto'}</button></div>
          </form>
