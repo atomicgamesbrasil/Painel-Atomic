@@ -206,7 +206,7 @@ app.post('/api/banners', authenticateToken, async (req, res) => {
   }
 });
 
-// PEDIDOS (ORDERS)
+// PEDIDOS (ORDERS) - ADMIN
 app.get('/api/orders', authenticateToken, async (req, res) => {
   try {
     const data = await getFileContent(PATH_ORDERS);
@@ -233,6 +233,43 @@ app.post('/api/orders/update', authenticateToken, async (req, res) => {
         }
     } catch (e) {
         res.status(500).json({ message: 'Erro ao atualizar pedido' });
+    }
+});
+
+// PEDIDOS (ORDERS) - PÚBLICO (SITE)
+// Esta rota permite que o site crie um pedido SEM precisar estar logado no admin
+app.post('/api/public/order', async (req, res) => {
+    try {
+        const { customer, items, total } = req.body;
+        
+        if (!customer || !total) {
+            return res.status(400).json({ message: 'Dados incompletos' });
+        }
+
+        const newOrder = {
+            id: Date.now().toString().slice(-6), // ID curto
+            customer: customer,
+            items: items || "Pedido via Site",
+            total: total,
+            status: "pending",
+            date: new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR')
+        };
+
+        const currentData = await getFileContent(PATH_ORDERS);
+        let orders = Array.isArray(currentData.content) ? currentData.content : [];
+        
+        // Adiciona no topo da lista
+        orders.unshift(newOrder);
+        
+        // Mantém apenas os últimos 100 pedidos para o arquivo não ficar gigante
+        if (orders.length > 100) orders = orders.slice(0, 100);
+
+        await saveFileContent(PATH_ORDERS, orders, `NEW ORDER: ${newOrder.id}`, currentData.sha);
+        
+        res.json({ success: true, orderId: newOrder.id });
+    } catch (e) {
+        console.error("Erro ao criar pedido público:", e);
+        res.status(500).json({ message: 'Erro ao processar pedido' });
     }
 });
 
