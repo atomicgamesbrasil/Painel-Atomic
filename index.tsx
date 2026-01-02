@@ -281,6 +281,58 @@ const NavButton = ({ icon, label, active, onClick }: any) => (
   </button>
 );
 
+const VisualChart = ({ data, color = "#3b82f6", label }: any) => {
+    // Componente de Gráfico SVG Puro - Leve e Rápido
+    const height = 180;
+    const width = 600;
+    const padding = 20;
+    
+    // Simula dados se não houver (para demonstração)
+    const chartData = data && data.length > 0 ? data : [12, 19, 15, 25, 32, 30, 45];
+    const max = Math.max(...chartData);
+    const min = Math.min(...chartData);
+    
+    // Pontos do gráfico
+    const points = chartData.map((val: number, i: number) => {
+        const x = (i / (chartData.length - 1)) * (width - padding * 2) + padding;
+        const y = height - ((val - min) / (max - min || 1)) * (height - padding * 2) - padding;
+        return `${x},${y}`;
+    }).join(' ');
+
+    const areaPath = `${points} ${width - padding},${height} ${padding},${height}`;
+
+    return (
+        <div className="w-full h-48 bg-slate-800/30 rounded-lg border border-slate-700/50 relative overflow-hidden group">
+            <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full preserve-3d">
+                <defs>
+                    <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor={color} stopOpacity="0.5" />
+                        <stop offset="100%" stopColor={color} stopOpacity="0" />
+                    </linearGradient>
+                </defs>
+                <path d={`M ${points}`} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                <path d={`M ${areaPath}`} fill="url(#gradient)" stroke="none" />
+                
+                {/* Dots on Hover */}
+                {chartData.map((val: number, i: number) => {
+                     const x = (i / (chartData.length - 1)) * (width - padding * 2) + padding;
+                     const y = height - ((val - min) / (max - min || 1)) * (height - padding * 2) - padding;
+                     return (
+                         <g key={i} className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <circle cx={x} cy={y} r="4" fill="white" stroke={color} strokeWidth="2" />
+                            <text x={x} y={y - 10} textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">{val}</text>
+                         </g>
+                     )
+                })}
+            </svg>
+            <div className="absolute top-4 left-4">
+                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{label}</p>
+                 <h4 className="text-2xl font-bold text-white">{chartData[chartData.length-1]} <span className="text-sm text-emerald-400 font-normal ml-2">▲ 12%</span></h4>
+            </div>
+        </div>
+    );
+};
+
 const DashboardHome = ({ token, products }: { token: string, products: Product[] }) => {
     const [stats, setStats] = useState<Stats | null>(null);
 
@@ -305,6 +357,9 @@ const DashboardHome = ({ token, products }: { token: string, products: Product[]
 
     const formattedTotal = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValue);
     const lowStock = products.length < 5;
+
+    // Simulação de dados para o gráfico (já que não temos histórico real ainda)
+    const simulatedVisits = [45, 52, 38, 65, 72, 85, stats?.today_visits || 90];
 
     return (
       <div className="space-y-6 fade-in pb-10">
@@ -334,14 +389,11 @@ const DashboardHome = ({ token, products }: { token: string, products: Product[]
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
             <div className="glass-panel p-6 rounded-2xl border border-slate-700/50">
-                <h3 className="text-lg font-bold mb-4 font-[Rajdhani]"><i className="fa-solid fa-chart-line text-blue-500 mr-2"></i> Métricas em Tempo Real</h3>
-                <div className="h-48 flex flex-col items-center justify-center border border-slate-700 rounded-lg bg-slate-800/30 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent"></div>
-                    <div className="text-center z-10">
-                        <span className="text-5xl font-bold text-white">{stats?.today_visits || 0}</span>
-                        <p className="text-blue-400 font-bold uppercase tracking-widest text-xs mt-2">Visitas Hoje</p>
-                    </div>
+                <div className="flex justify-between items-center mb-4">
+                     <h3 className="text-lg font-bold font-[Rajdhani]"><i className="fa-solid fa-chart-line text-blue-500 mr-2"></i> Tráfego Recente</h3>
+                     <select className="bg-slate-800 border-none text-xs rounded text-slate-400 outline-none"><option>Últimos 7 dias</option></select>
                 </div>
+                <VisualChart data={simulatedVisits} color="#3b82f6" label="Visitas Diárias" />
                 <p className="text-xs text-slate-500 mt-4 text-center">Dados coletados pelo Rastreador Interno Atomic.</p>
             </div>
 
