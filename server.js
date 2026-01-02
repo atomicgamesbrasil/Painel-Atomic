@@ -264,7 +264,9 @@ app.post('/api/orders', authenticateToken, async (req, res) => {
 // PEDIDOS (PÚBLICO)
 app.post('/api/public/order', async (req, res) => {
     try {
-        console.log("📨 Recebendo novo pedido...");
+        console.log("📨 RECEBIDO PEDIDO PÚBLICO");
+        console.log("BODY:", req.body); // Log do payload para debug
+        
         const { customer, items, total } = req.body;
         
         if (!customer || !total) {
