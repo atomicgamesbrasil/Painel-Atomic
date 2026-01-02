@@ -446,6 +446,7 @@ const StatCard = ({ icon, label, value, color, isEstimate }: any) => (
 const OrdersManager = ({ token, toast }: any) => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(false);
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
     const fetchOrders = async () => {
         setLoading(true);
@@ -506,13 +507,14 @@ const OrdersManager = ({ token, toast }: any) => {
                         </thead>
                         <tbody className="divide-y divide-slate-700/30 text-sm">
                             {orders.map(o => (
-                                <tr key={o.id} className="hover:bg-slate-800/50">
+                                <tr key={o.id} className="hover:bg-slate-800/50 group">
                                     <td className="p-4 font-mono text-xs text-slate-500">#{o.id}</td>
                                     <td className="p-4 font-bold">{o.customer}</td>
-                                    <td className="p-4 text-slate-400">{o.items}</td>
+                                    <td className="p-4 text-slate-400 max-w-[200px] truncate">{o.items}</td>
                                     <td className="p-4 font-mono text-emerald-400">{o.total}</td>
                                     <td className="p-4"><span className={`px-2 py-1 rounded text-[10px] font-bold border uppercase ${getStatusColor(o.status)}`}>{o.status}</span></td>
-                                    <td className="p-4">
+                                    <td className="p-4 flex gap-2">
+                                        <button onClick={() => setSelectedOrder(o)} className="p-2 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded border border-slate-600 transition-colors" title="Ver Detalhes"><i className="fa-solid fa-eye"></i></button>
                                         <select onChange={(e) => updateStatus(o.id, e.target.value)} value={o.status} className="bg-slate-900 border border-slate-700 rounded text-xs p-1 focus:border-yellow-500 outline-none">
                                             <option value="pending">Pendente</option>
                                             <option value="approved">Aprovado</option>
@@ -525,6 +527,74 @@ const OrdersManager = ({ token, toast }: any) => {
                         </tbody>
                     </table>
                  )}
+            </div>
+            
+            {/* INVOICE MODAL */}
+            {selectedOrder && <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />}
+        </div>
+    );
+};
+
+const OrderDetailsModal = ({ order, onClose }: { order: Order, onClose: () => void }) => {
+    return (
+        <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center backdrop-blur-sm p-4 animate-in fade-in zoom-in duration-300">
+            <div className="bg-white text-black w-full max-w-2xl rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" id="print-area">
+                <div className="p-6 border-b border-gray-200 flex justify-between items-start bg-gray-50">
+                    <div>
+                         <h3 className="text-2xl font-bold font-[Rajdhani] uppercase text-slate-800">Comprovante de Pedido</h3>
+                         <p className="text-sm text-gray-500">ID: #{order.id}</p>
+                    </div>
+                    <div className="text-right">
+                         <h4 className="font-bold text-lg text-slate-800">Atomic Games</h4>
+                         <p className="text-xs text-gray-500">Recibo Digital</p>
+                    </div>
+                </div>
+                
+                <div className="p-6 overflow-y-auto custom-scroll bg-white">
+                    <div className="grid grid-cols-2 gap-8 mb-8">
+                        <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase mb-1">Cliente</p>
+                            <p className="font-bold text-lg">{order.customer}</p>
+                            <p className="text-sm text-gray-500">Cliente via Site</p>
+                        </div>
+                        <div className="text-right">
+                             <p className="text-xs font-bold text-gray-400 uppercase mb-1">Data & Status</p>
+                             <p className="font-mono text-sm">{order.date || 'Data não registrada'}</p>
+                             <span className="inline-block px-2 py-1 rounded bg-slate-100 text-xs font-bold uppercase mt-1 border border-slate-200">{order.status}</span>
+                        </div>
+                    </div>
+
+                    <div className="border rounded-lg overflow-hidden mb-6">
+                        <table className="w-full text-left">
+                            <thead className="bg-gray-100 text-gray-500 text-xs uppercase">
+                                <tr><th className="p-3">Item / Descrição</th><th className="p-3 text-right">Valor</th></tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 text-sm">
+                                {/* Simula lista caso seja string única */}
+                                <tr>
+                                    <td className="p-3 font-medium">{order.items}</td>
+                                    <td className="p-3 text-right font-mono">{order.total}</td>
+                                </tr>
+                            </tbody>
+                            <tfoot className="bg-gray-50 font-bold">
+                                <tr>
+                                    <td className="p-3 text-right uppercase text-xs text-gray-500">Total Geral</td>
+                                    <td className="p-3 text-right text-lg text-emerald-600">{order.total}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    
+                    <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-lg text-sm text-yellow-800 flex items-start gap-3">
+                        <i className="fa-solid fa-circle-info mt-1"></i>
+                        <p>Este documento é um comprovante digital interno. Para validade fiscal, solicite a nota oficial.</p>
+                    </div>
+                </div>
+
+                <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 no-print">
+                    <button onClick={() => window.print()} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded font-bold transition-colors"><i className="fa-solid fa-print mr-2"></i> Imprimir</button>
+                    <button onClick={onClose} className="px-6 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded font-bold transition-colors">Fechar</button>
+                </div>
             </div>
         </div>
     );
