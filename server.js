@@ -217,6 +217,7 @@ app.get('/api/orders', authenticateToken, async (req, res) => {
   }
 });
 
+// Atualiza Status
 app.post('/api/orders/update', authenticateToken, async (req, res) => {
     try {
         const { orderId, status } = req.body;
@@ -233,6 +234,38 @@ app.post('/api/orders/update', authenticateToken, async (req, res) => {
         }
     } catch (e) {
         res.status(500).json({ message: 'Erro ao atualizar pedido' });
+    }
+});
+
+// Cria Pedido Manual (Admin)
+app.post('/api/orders', authenticateToken, async (req, res) => {
+    try {
+        const { customer, items, total, status } = req.body;
+        
+        const newOrder = {
+            id: Date.now().toString().slice(-6),
+            customer: customer || "Cliente Manual",
+            items: items || "Venda Balcão/Direct",
+            total: total || "R$ 0,00",
+            status: status || "approved",
+            date: new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR')
+        };
+
+        const currentData = await getFileContent(PATH_ORDERS);
+        let orders = Array.isArray(currentData.content) ? currentData.content : [];
+        
+        // Adiciona no topo
+        orders.unshift(newOrder);
+        
+        // Limite de segurança
+        if (orders.length > 100) orders = orders.slice(0, 100);
+
+        await saveFileContent(PATH_ORDERS, orders, `ADMIN NEW ORDER: ${newOrder.id}`, currentData.sha);
+        
+        res.json({ success: true, orderId: newOrder.id });
+    } catch (e) {
+        console.error("Erro ao criar pedido manual:", e);
+        res.status(500).json({ message: 'Erro ao criar pedido' });
     }
 });
 
