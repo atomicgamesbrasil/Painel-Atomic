@@ -447,6 +447,7 @@ const OrdersManager = ({ token, toast }: any) => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [showCreateModal, setShowCreateModal] = useState(false);
 
     const fetchOrders = async () => {
         setLoading(true);
@@ -488,9 +489,12 @@ const OrdersManager = ({ token, toast }: any) => {
 
     return (
         <div className="space-y-6 fade-in pb-10">
-             <header className="flex justify-between items-end pb-4 border-b border-slate-700/50">
+             <header className="flex flex-col md:flex-row justify-between md:items-end gap-4 pb-4 border-b border-slate-700/50">
                 <div><h2 className="text-3xl font-bold font-[Rajdhani]">Pedidos</h2><p className="text-slate-400">Gerenciamento de vendas e solicitações.</p></div>
-                <button onClick={fetchOrders} className="text-slate-400 hover:text-white"><i className="fa-solid fa-sync"></i></button>
+                <div className="flex gap-3">
+                   <button onClick={() => setShowCreateModal(true)} className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white px-4 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 text-sm"><i className="fa-solid fa-plus"></i> Novo Pedido</button>
+                   <button onClick={fetchOrders} className="text-slate-400 hover:text-white px-2"><i className="fa-solid fa-sync"></i></button>
+                </div>
             </header>
             
             <div className="glass-panel rounded-xl overflow-hidden border border-slate-700/50 shadow-xl overflow-x-auto">
@@ -531,6 +535,73 @@ const OrdersManager = ({ token, toast }: any) => {
             
             {/* INVOICE MODAL */}
             {selectedOrder && <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />}
+            {/* CREATE MODAL */}
+            {showCreateModal && <OrderCreateModal token={token} onClose={() => setShowCreateModal(false)} onSave={fetchOrders} toast={toast} />}
+        </div>
+    );
+};
+
+const OrderCreateModal = ({ token, onClose, onSave, toast }: any) => {
+    const [form, setForm] = useState({ customer: '', items: '', total: '', status: 'approved' });
+    const [saving, setSaving] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            let totalFormatted = form.total;
+            if(!totalFormatted.includes('R$')) totalFormatted = `R$ ${totalFormatted}`;
+
+            const res = await fetch(`${API_BASE_URL}/orders`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ ...form, total: totalFormatted })
+            });
+            if(res.ok) {
+                toast('success', 'Pedido criado manualmente!');
+                onSave();
+                onClose();
+            } else {
+                toast('error', 'Erro ao criar pedido');
+            }
+        } catch(e) { toast('error', 'Erro de conexão'); }
+        finally { setSaving(false); }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center backdrop-blur-sm p-4">
+             <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl shadow-2xl p-6">
+                 <h3 className="text-xl font-bold font-[Rajdhani] mb-4 text-white">Novo Pedido Manual</h3>
+                 <form onSubmit={handleSubmit} className="space-y-4">
+                     <div>
+                         <label className="text-xs font-bold text-slate-400 uppercase">Nome do Cliente</label>
+                         <input required type="text" value={form.customer} onChange={e => setForm({...form, customer: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded p-2 mt-1 text-white focus:border-blue-500 outline-none" placeholder="Ex: João Silva" />
+                     </div>
+                     <div>
+                         <label className="text-xs font-bold text-slate-400 uppercase">Descrição dos Itens</label>
+                         <textarea required value={form.items} onChange={e => setForm({...form, items: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded p-2 mt-1 text-white focus:border-blue-500 outline-none" rows={3} placeholder="Ex: 1x God of War, 1x Controle PS5"></textarea>
+                     </div>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs font-bold text-slate-400 uppercase">Valor Total</label>
+                            <input required type="text" value={form.total} onChange={e => setForm({...form, total: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded p-2 mt-1 text-white focus:border-blue-500 outline-none" placeholder="0,00" />
+                        </div>
+                        <div>
+                             <label className="text-xs font-bold text-slate-400 uppercase">Status Inicial</label>
+                             <select value={form.status} onChange={e => setForm({...form, status: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded p-2 mt-1 text-white focus:border-blue-500 outline-none">
+                                 <option value="pending">Pendente</option>
+                                 <option value="approved">Aprovado</option>
+                                 <option value="shipped">Enviado</option>
+                                 <option value="delivered">Entregue</option>
+                             </select>
+                        </div>
+                     </div>
+                     <div className="flex justify-end gap-3 pt-4">
+                         <button type="button" onClick={onClose} className="px-4 py-2 text-slate-400 hover:text-white">Cancelar</button>
+                         <button type="submit" disabled={saving} className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold shadow-lg">{saving ? 'Salvando...' : 'Criar Pedido'}</button>
+                     </div>
+                 </form>
+             </div>
         </div>
     );
 };
