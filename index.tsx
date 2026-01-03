@@ -367,36 +367,40 @@ const DashboardHome = ({ token, products }: { token: string, products: Product[]
             <h2 className="text-3xl md:text-4xl font-bold font-[Rajdhani] mb-2">Painel de Controle</h2>
             <p className="text-slate-400 text-sm md:text-base">Resumo financeiro e operacional da Atomic Games.</p>
           </div>
-          <div className="flex items-center gap-2 text-xs text-emerald-500 font-bold bg-emerald-500/10 px-3 py-1 rounded-full animate-pulse">
-            <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-            Ao Vivo
+          <div className="flex items-center gap-3">
+             <button onClick={fetchStats} className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1 rounded-full border border-slate-600 transition-colors">
+                 <i className="fa-solid fa-sync mr-1"></i> Atualizar
+             </button>
+             <div className="flex items-center gap-2 text-xs text-emerald-500 font-bold bg-emerald-500/10 px-3 py-1 rounded-full animate-pulse">
+                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                Ao Vivo
+             </div>
           </div>
         </header>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
-          <StatCard icon="fa-money-bill-wave" label="Valor em Estoque" value={formattedTotal} color="emerald" />
+          <StatCard icon="fa-wallet" label="Valor em Estoque" value={formattedTotal} color="emerald" />
           <StatCard icon="fa-gamepad" label="Produtos Ativos" value={products.length} color="yellow" />
           <StatCard icon="fa-users" label="Visitas Totais" value={stats?.total_visits || 0} color="blue" />
           
-          <div className="glass-panel p-6 rounded-2xl border-l-4 border-purple-500 bg-slate-800/50 relative overflow-hidden group">
-             {/* BACKGROUND WATERMARK ICON */}
-             <div className="absolute right-[-10px] top-[-10px] opacity-[0.05] group-hover:opacity-[0.1] transition-all transform group-hover:scale-110 duration-500">
+          <div className="glass-panel p-6 rounded-2xl border-l-4 border-purple-500 relative overflow-hidden group bg-slate-800/50">
+             {/* BACKGROUND WATERMARK ICON - IDENTICAL TO STATCARD */}
+             <div className="absolute right-[-10px] top-[-10px] opacity-[0.1] group-hover:opacity-[0.15] transition-all transform group-hover:scale-110 duration-500">
                 <i className="fa-solid fa-server text-9xl text-white"></i>
              </div>
              
-             <div className="relative z-10">
-                 <div className="flex justify-between items-start">
-                     <div>
-                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Status da Loja</p>
-                        <h3 className="text-xl font-bold mt-1 text-purple-400">Operando</h3>
+             <div className="flex justify-between items-start relative z-10">
+                <div className="w-full">
+                     <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Status da Loja</p>
+                     <h3 className="text-2xl font-bold mt-2 text-purple-400 mb-2">Operando</h3>
+                     
+                     <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden mt-3">
+                        <div className="bg-purple-500 h-full w-[99%] shadow-[0_0_10px_rgba(168,85,247,0.5)]"></div>
                      </div>
-                     <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400">
-                         <i className="fa-solid fa-server"></i>
-                     </div>
-                 </div>
-                 <div className="mt-4 w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                    <div className="bg-purple-500 h-full w-[98%]"></div>
-                 </div>
-                 <p className="text-[10px] text-right mt-1 text-slate-500">Uptime 99.9%</p>
+                     <p className="text-[10px] text-right mt-1 text-slate-400">Uptime 99.9%</p>
+                </div>
+                <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400 flex-shrink-0 ml-4">
+                    <i className="fa-solid fa-server"></i>
+                </div>
              </div>
           </div>
         </div>
