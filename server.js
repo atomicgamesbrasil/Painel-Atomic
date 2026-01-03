@@ -1,5 +1,5 @@
 /**
- * ATOMIC BACKEND SERVER
+ * ATOMIC BACKEND SERVER - VERSION 2.1
  * Architecture: Monolithic with Service Layer Pattern
  * Standard: CommonJS (Node.js)
  */
@@ -43,17 +43,18 @@ const app = express();
 const octokit = new Octokit({ auth: CONFIG.GITHUB.TOKEN });
 
 // Middleware
-app.use(cors()); // Allow Cross-Origin for public access
-app.use(express.json({ limit: '50mb' })); // Support large image uploads
-app.use(express.static(__dirname)); // Serve Frontend
+app.use(cors());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.static(__dirname));
 
 // --- DATA LAYER (GITHUB SERVICE) ---
-// Encapsulates all interactions with the persistence layer
 const DatabaseService = {
-    // In-Memory Cache to reduce latency and API calls
     cache: {
         stats: { total_visits: 0, today_visits: 0, last_updated: new Date().toISOString(), sha: null },
         orders: { content: [], sha: null },
+        products: { content: [], sha: null },
+        banners: { content: [], sha: null },
+        config: { content: {}, sha: null },
         isStatsDirty: false
     },
 
@@ -72,11 +73,7 @@ const DatabaseService = {
             }
             return { content: [], sha: data.sha };
         } catch (e) {
-            if (e.status === 404) {
-                console.log(`ℹ️ [DB] File not found: ${filePath}. Assuming empty/new.`);
-                return { content: null, sha: null };
-            }
-            console.error(`⚠️ [DB ERROR] Read failed for ${filePath}:`, e.message);
+            if (e.status === 404) return { content: null, sha: null };
             throw e;
         }
     },
@@ -109,7 +106,6 @@ const DatabaseService = {
         
         let sha = null;
         try {
-            // Check if file exists to update instead of create (get SHA)
             const { data } = await octokit.rest.repos.getContent({
                 owner: CONFIG.GITHUB.OWNER,
                 repo: CONFIG.GITHUB.REPO,
@@ -117,7 +113,7 @@ const DatabaseService = {
                 ref: CONFIG.GITHUB.BRANCH
             });
             sha = data.sha;
-        } catch (e) { /* File doesn't exist, proceed with create */ }
+        } catch (e) {}
 
         await octokit.rest.repos.createOrUpdateFileContents({
             owner: CONFIG.GITHUB.OWNER,
@@ -133,43 +129,41 @@ const DatabaseService = {
     },
 
     async initialize() {
-        console.log("🔄 [SYSTEM] Hydrating In-Memory Cache...");
-        
-        // 1. Stats
-        const stats = await this.getFile(CONFIG.PATHS.STATS);
-        if (stats.content) this.cache.stats = { ...stats.content, sha: stats.sha };
+        console.log("🔄 [SYSTEM] Hydrating Cache...");
+        try {
+            const [stats, orders, prods, bans, conf] = await Promise.all([
+                this.getFile(CONFIG.PATHS.STATS),
+                this.getFile(CONFIG.PATHS.ORDERS),
+                this.getFile(CONFIG.PATHS.PRODUCTS),
+                this.getFile(CONFIG.PATHS.BANNERS),
+                this.getFile(CONFIG.PATHS.CONFIG)
+            ]);
 
-        // 2. Orders
-        const orders = await this.getFile(CONFIG.PATHS.ORDERS);
-        const storedOrders = Array.isArray(orders.content) ? orders.content : [];
-        // Merge strategy: RAM (Newest) + Disk (Stored), unique by ID
-        const merged = [...this.cache.orders.content, ...storedOrders]
-            .filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i);
-        
-        this.cache.orders.content = merged;
-        this.cache.orders.sha = orders.sha;
+            if (stats.content) this.cache.stats = { ...stats.content, sha: stats.sha };
+            if (orders.content) this.cache.orders = { content: orders.content, sha: orders.sha };
+            if (prods.content) this.cache.products = { content: prods.content, sha: prods.sha };
+            if (bans.content) this.cache.banners = { content: bans.content, sha: bans.sha };
+            if (conf.content) this.cache.config = { content: conf.content, sha: conf.sha };
 
-        console.log(`✅ [SYSTEM] Ready. Active Orders: ${this.cache.orders.content.length}`);
+            console.log(`✅ [SYSTEM] Cache Ready. Products: ${this.cache.products.content.length}`);
+        } catch (e) {
+            console.error("❌ [SYSTEM] Initialization failed:", e.message);
+        }
     },
 
     async flushStats() {
         if (!this.cache.isStatsDirty) return;
-        console.log("💾 [AUTO] Syncing Stats to GitHub...");
-        
         this.cache.stats.last_updated = new Date().toISOString();
         const payload = { 
             total_visits: this.cache.stats.total_visits, 
             today_visits: this.cache.stats.today_visits,
             last_updated: this.cache.stats.last_updated
         };
-
         try {
             const newSha = await this.saveFile(CONFIG.PATHS.STATS, payload, "AUTO: Update Stats", this.cache.stats.sha);
             this.cache.stats.sha = newSha;
             this.cache.isStatsDirty = false;
-        } catch (e) {
-            console.error("❌ [AUTO] Stats Sync Failed");
-        }
+        } catch (e) {}
     }
 };
 
@@ -177,11 +171,9 @@ const DatabaseService = {
 const requireAuth = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) return res.status(401).json({ message: 'Unauthorized: No token' });
-
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
     jwt.verify(token, CONFIG.JWT_SECRET, (err, user) => {
-        if (err) return res.status(403).json({ message: 'Forbidden: Invalid token' });
+        if (err) return res.status(403).json({ message: 'Forbidden' });
         req.user = user;
         next();
     });
@@ -189,8 +181,10 @@ const requireAuth = (req, res, next) => {
 
 // --- ROUTES ---
 
-// System
-app.get('/health', (req, res) => res.status(200).send('OK'));
+// Public Data API (Instant Updates)
+app.get('/api/public/products', async (req, res) => res.json(DatabaseService.cache.products.content || []));
+app.get('/api/public/banners', async (req, res) => res.json(DatabaseService.cache.banners.content || []));
+app.get('/api/public/config', async (req, res) => res.json(DatabaseService.cache.config.content || {}));
 app.get('/api/public/wake', (req, res) => res.json({ status: 'awake', ts: Date.now() }));
 
 // Auth
@@ -203,172 +197,49 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(401).json({ message: 'Invalid credentials' });
 });
 
-// Products
-app.get('/api/products', requireAuth, async (req, res) => {
-    try {
-        const data = await DatabaseService.getFile(CONFIG.PATHS.PRODUCTS);
-        res.json(data.content || []);
-    } catch (e) { res.status(500).json({ message: 'Failed to fetch products' }); }
-});
-
+// Admin Products (Updating Cache)
+app.get('/api/products', requireAuth, (req, res) => res.json(DatabaseService.cache.products.content));
 app.post('/api/products', requireAuth, async (req, res) => {
     try {
         const product = req.body;
-        delete product.isEdit; // Clean UI flags
-        
-        const dbData = await DatabaseService.getFile(CONFIG.PATHS.PRODUCTS);
-        let products = Array.isArray(dbData.content) ? [...dbData.content] : [];
-        
+        let products = Array.isArray(DatabaseService.cache.products.content) ? [...DatabaseService.cache.products.content] : [];
         const idx = products.findIndex(p => p.id === product.id);
-        if (idx !== -1) products[idx] = product;
-        else products.unshift(product);
-
-        await DatabaseService.saveFile(CONFIG.PATHS.PRODUCTS, products, `UPDATE: Product ${product.name}`, dbData.sha);
-        res.json({ message: 'Product saved' });
-    } catch (e) { res.status(500).json({ message: 'Failed to save product' }); }
+        if (idx !== -1) products[idx] = product; else products.unshift(product);
+        
+        DatabaseService.cache.products.content = products;
+        const newSha = await DatabaseService.saveFile(CONFIG.PATHS.PRODUCTS, products, `UPDATE: Product ${product.name}`, DatabaseService.cache.products.sha);
+        DatabaseService.cache.products.sha = newSha;
+        res.json({ message: 'Saved' });
+    } catch (e) { res.status(500).send(e.message); }
 });
 
 app.delete('/api/products/:id', requireAuth, async (req, res) => {
     try {
         const { id } = req.params;
-        const dbData = await DatabaseService.getFile(CONFIG.PATHS.PRODUCTS);
-        const filtered = (dbData.content || []).filter(p => p.id !== id);
-        
-        await DatabaseService.saveFile(CONFIG.PATHS.PRODUCTS, filtered, `DELETE: Product ${id}`, dbData.sha);
-        res.json({ message: 'Product deleted' });
-    } catch (e) { res.status(500).json({ message: 'Failed to delete product' }); }
+        DatabaseService.cache.products.content = DatabaseService.cache.products.content.filter(p => p.id !== id);
+        const newSha = await DatabaseService.saveFile(CONFIG.PATHS.PRODUCTS, DatabaseService.cache.products.content, `DELETE: Product ${id}`, DatabaseService.cache.products.sha);
+        DatabaseService.cache.products.sha = newSha;
+        res.json({ message: 'Deleted' });
+    } catch (e) { res.status(500).send(e.message); }
 });
 
-// Banners
-app.get('/api/banners', requireAuth, async (req, res) => {
-    try {
-        const data = await DatabaseService.getFile(CONFIG.PATHS.BANNERS);
-        res.json(data.content || []);
-    } catch (e) { res.status(500).json({ message: 'Failed to fetch banners' }); }
-});
-
-app.post('/api/banners', requireAuth, async (req, res) => {
-    try {
-        const dbData = await DatabaseService.getFile(CONFIG.PATHS.BANNERS);
-        await DatabaseService.saveFile(CONFIG.PATHS.BANNERS, req.body, "UPDATE: Banners", dbData.sha);
-        res.json({ message: 'Banners saved' });
-    } catch (e) { res.status(500).json({ message: 'Failed to save banners' }); }
-});
-
-// Orders (Admin)
-app.get('/api/orders', requireAuth, (req, res) => {
-    // Serve from cache for speed
-    res.json(DatabaseService.cache.orders.content);
-});
-
-app.post('/api/orders/update', requireAuth, async (req, res) => {
-    try {
-        const { orderId, status } = req.body;
-        const list = DatabaseService.cache.orders.content;
-        const idx = list.findIndex(o => o.id === orderId);
-
-        if (idx !== -1) {
-            list[idx].status = status;
-            // Optimistic update in cache, then async save
-            const newSha = await DatabaseService.saveFile(CONFIG.PATHS.ORDERS, list, `UPDATE ORDER: ${orderId}`, DatabaseService.cache.orders.sha);
-            DatabaseService.cache.orders.sha = newSha;
-            res.json({ success: true });
-        } else {
-            res.status(404).json({ message: 'Order not found' });
-        }
-    } catch (e) { res.status(500).json({ message: 'Failed to update order' }); }
-});
-
-app.post('/api/orders', requireAuth, async (req, res) => {
-    // Admin manual creation
-    try {
-        const { customer, items, total, status } = req.body;
-        const newOrder = {
-            id: Date.now().toString().slice(-6),
-            customer: customer || "Manual Entry",
-            items: items || "Direct Sale",
-            total: total || "R$ 0,00",
-            status: status || "approved",
-            date: new Date().toLocaleString('pt-BR')
-        };
-        
-        DatabaseService.cache.orders.content.unshift(newOrder);
-        // Trim history to keep JSON file manageable (optional, currently 100)
-        if (DatabaseService.cache.orders.content.length > 100) {
-            DatabaseService.cache.orders.content = DatabaseService.cache.orders.content.slice(0, 100);
-        }
-
-        const newSha = await DatabaseService.saveFile(CONFIG.PATHS.ORDERS, DatabaseService.cache.orders.content, `ADMIN ORDER: ${newOrder.id}`, DatabaseService.cache.orders.sha);
-        DatabaseService.cache.orders.sha = newSha;
-        res.json({ success: true, orderId: newOrder.id });
-    } catch (e) { res.status(500).json({ message: 'Failed to create order' }); }
-});
-
-// Orders (Public)
+// Orders & Stats (Simplified)
+app.get('/api/orders', requireAuth, (req, res) => res.json(DatabaseService.cache.orders.content));
 app.post('/api/public/order', async (req, res) => {
     try {
-        const { customer, items, total } = req.body;
-        
-        if (!customer || !total) {
-            return res.status(400).json({ message: 'Missing required fields' });
-        }
-
-        const newOrder = {
-            id: Date.now().toString().slice(-6),
-            customer: customer,
-            items: items || "Web Order",
-            total: total,
-            status: "pending",
-            date: new Date().toLocaleString('pt-BR')
-        };
-
-        // 1. Save to RAM immediately (Fastest response)
+        const newOrder = { id: Date.now().toString().slice(-6), ...req.body, status: "pending", date: new Date().toLocaleString('pt-BR') };
         DatabaseService.cache.orders.content.unshift(newOrder);
-        if (DatabaseService.cache.orders.content.length > 100) {
-            DatabaseService.cache.orders.content = DatabaseService.cache.orders.content.slice(0, 100);
-        }
-
-        console.log(`📨 [PUBLIC] Order #${newOrder.id} received`);
         res.json({ success: true, orderId: newOrder.id });
-
-        // 2. Persist to Disk asynchronously (Don't block response)
-        try {
-            const newSha = await DatabaseService.saveFile(CONFIG.PATHS.ORDERS, DatabaseService.cache.orders.content, `NEW ORDER: ${newOrder.id}`, DatabaseService.cache.orders.sha);
-            DatabaseService.cache.orders.sha = newSha;
-        } catch (e) {
-            console.error("⚠️ [RISK] Order saved to RAM but failed to sync to GitHub:", e.message);
-        }
-
-    } catch (e) {
-        console.error("❌ [CRITICAL] Public Order Error:", e);
-        res.status(500).json({ message: 'Internal Error' });
-    }
+        const newSha = await DatabaseService.saveFile(CONFIG.PATHS.ORDERS, DatabaseService.cache.orders.content, `NEW ORDER: ${newOrder.id}`, DatabaseService.cache.orders.sha);
+        DatabaseService.cache.orders.sha = newSha;
+    } catch (e) { res.status(500).send(e.message); }
 });
-
-// Analytics
-app.get('/api/stats', requireAuth, (req, res) => res.json(DatabaseService.cache.stats));
 
 app.post('/api/public/track', (req, res) => {
-    DatabaseService.cache.stats.total_visits = (DatabaseService.cache.stats.total_visits || 0) + 1;
-    DatabaseService.cache.stats.today_visits = (DatabaseService.cache.stats.today_visits || 0) + 1;
+    DatabaseService.cache.stats.total_visits++;
+    DatabaseService.cache.stats.today_visits++;
     DatabaseService.cache.isStatsDirty = true;
     res.json({ success: true });
-});
-
-// Config
-app.get('/api/config', requireAuth, async (req, res) => {
-    try {
-        const data = await DatabaseService.getFile(CONFIG.PATHS.CONFIG);
-        res.json(data.content || {});
-    } catch (e) { res.status(500).json({ message: 'Fetch config error' }); }
-});
-
-app.post('/api/config', requireAuth, async (req, res) => {
-    try {
-        const dbData = await DatabaseService.getFile(CONFIG.PATHS.CONFIG);
-        await DatabaseService.saveFile(CONFIG.PATHS.CONFIG, req.body, "UPDATE: Site Config", dbData.sha);
-        res.json({ message: 'Config saved' });
-    } catch (e) { res.status(500).json({ message: 'Save config error' }); }
 });
 
 // Uploads
@@ -377,16 +248,25 @@ app.post('/api/upload', requireAuth, async (req, res) => {
         const { filename, content, folder } = req.body;
         const url = await DatabaseService.uploadImage(filename, content, folder);
         res.json({ url });
-    } catch (e) { res.status(500).json({ message: 'Upload failed' }); }
+    } catch (e) { res.status(500).send(e.message); }
+});
+
+// Config Admin
+app.get('/api/config', requireAuth, (req, res) => res.json(DatabaseService.cache.config.content));
+app.post('/api/config', requireAuth, async (req, res) => {
+    try {
+        DatabaseService.cache.config.content = req.body;
+        const newSha = await DatabaseService.saveFile(CONFIG.PATHS.CONFIG, req.body, "UPDATE: Config", DatabaseService.cache.config.sha);
+        DatabaseService.cache.config.sha = newSha;
+        res.json({ message: 'Saved' });
+    } catch (e) { res.status(500).send(e.message); }
 });
 
 // Fallback
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public.html')));
 
-// --- STARTUP SEQUENCE ---
+// STARTUP
 DatabaseService.initialize().then(() => {
-    app.listen(CONFIG.PORT, () => console.log(`\n🚀 [SERVER] Atomic Backend Online on Port ${CONFIG.PORT}`));
-    
-    // Auto-sync stats every 10 minutes
-    setInterval(() => DatabaseService.flushStats(), 10 * 60 * 1000);
+    app.listen(CONFIG.PORT, () => console.log(`🚀 [ATOMIC] Online Port ${CONFIG.PORT}`));
+    setInterval(() => DatabaseService.flushStats(), 5 * 60 * 1000);
 });
