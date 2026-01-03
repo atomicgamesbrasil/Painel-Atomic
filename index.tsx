@@ -375,14 +375,7 @@ const DashboardHome = ({ token, products }: { token: string, products: Product[]
 
             {/* ROW 2: Conversion & Funnel */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-                <div className="lg:col-span-2 bg-slate-800/50 border border-slate-700/50 p-6 rounded-2xl">
-                    <h3 className="text-lg font-bold mb-6 font-[Rajdhani]"><i className="fa-solid fa-filter text-indigo-500 mr-2"></i> Funil de Vendas (Hoje)</h3>
-                    <div className="space-y-4">
-                        <FunnelBar label="Visitas Totais" value={stats?.today_visits || 0} max={stats?.today_visits || 1} color="bg-purple-500" icon="fa-eye" />
-                        <FunnelBar label="Adicionou ao Carrinho" value={stats?.today_carts || 0} max={stats?.today_visits || 1} color="bg-yellow-500" icon="fa-cart-plus" />
-                        <FunnelBar label="Clicou no WhatsApp" value={stats?.today_whatsapp || 0} max={stats?.today_visits || 1} color="bg-emerald-500" icon="fa-whatsapp" />
-                    </div>
-                </div>
+                <FunnelSection stats={stats} />
 
                 <div className="bg-slate-800/50 border border-slate-700/50 p-6 rounded-2xl flex flex-col justify-center items-center relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent"></div>
@@ -401,6 +394,105 @@ const DashboardHome = ({ token, products }: { token: string, products: Product[]
     );
 };
 
+const FunnelSection = ({ stats }: { stats: any }) => {
+    const visits = stats?.today_visits || 0;
+    const carts = stats?.today_carts || 0;
+    const whatsapp = stats?.today_whatsapp || 0;
+    
+    // Avoid division by zero
+    const max = Math.max(visits, 1);
+    
+    // Calculate percentages
+    const cartPct = ((carts / max) * 100).toFixed(1);
+    const whatsappPct = ((whatsapp / max) * 100).toFixed(1);
+
+    // Calculate widths for visual funnel (min 15% to be visible)
+    const wVisits = 100;
+    const wCarts = Math.max(15, (carts / max) * 100);
+    const wWhatsapp = Math.max(15, (whatsapp / max) * 100);
+
+    return (
+        <div className="bg-slate-800/50 border border-slate-700/50 p-8 rounded-2xl relative overflow-hidden lg:col-span-2 flex flex-col justify-between">
+            <div className="flex items-center gap-3 mb-8 z-10">
+                 <div className="p-3 bg-indigo-500/10 rounded-lg text-indigo-400">
+                    <i className="fa-solid fa-filter text-xl"></i>
+                 </div>
+                 <div>
+                    <h3 className="text-xl font-bold font-[Rajdhani] text-white">Funil de Vendas</h3>
+                    <p className="text-xs text-slate-400 uppercase tracking-widest">Fluxo do Cliente (Hoje)</p>
+                 </div>
+            </div>
+
+            {/* Funnel Container */}
+            <div className="relative flex flex-col items-center gap-2 z-10 flex-1 justify-center">
+                {/* Connecting Line Background */}
+                <div className="absolute top-4 bottom-4 w-0.5 bg-gradient-to-b from-indigo-500/50 via-yellow-500/50 to-emerald-500/50 z-0"></div>
+
+                {/* Step 1: Visits */}
+                <FunnelStep 
+                    label="Visitas Totais" 
+                    value={visits} 
+                    percent={100} 
+                    width={100} 
+                    color="from-indigo-600 to-blue-600" 
+                    icon="fa-users"
+                    glow="shadow-indigo-500/20"
+                />
+
+                {/* Step 2: Carts */}
+                <FunnelStep 
+                    label="Adicionou ao Carrinho" 
+                    value={carts} 
+                    percent={cartPct} 
+                    width={wCarts} 
+                    color="from-yellow-500 to-orange-500" 
+                    icon="fa-cart-shopping"
+                    glow="shadow-yellow-500/20"
+                />
+
+                {/* Step 3: WhatsApp */}
+                <FunnelStep 
+                    label="Finalizou (WhatsApp)" 
+                    value={whatsapp} 
+                    percent={whatsappPct} 
+                    width={wWhatsapp} 
+                    color="from-emerald-500 to-teal-500" 
+                    icon="fa-whatsapp"
+                    glow="shadow-emerald-500/20"
+                />
+            </div>
+            
+            {/* Background Decor */}
+             <div className="absolute top-0 right-0 p-32 bg-indigo-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+             <div className="absolute bottom-0 left-0 p-32 bg-emerald-500/5 rounded-full blur-3xl -ml-16 -mb-16 pointer-events-none"></div>
+        </div>
+    );
+};
+
+const FunnelStep = ({ label, value, percent, width, color, icon, glow }: any) => (
+    <div className="relative w-full flex flex-col items-center group z-10 cursor-default">
+        <div 
+            className={`relative h-14 rounded-xl bg-gradient-to-r ${color} flex items-center justify-between px-6 shadow-lg ${glow} transition-all duration-1000 ease-out hover:scale-[1.02] border border-white/10`}
+            style={{ width: `${width}%`, minWidth: '280px' }}
+        >
+             <div className="flex items-center gap-3 text-white font-bold text-sm truncate">
+                <div className="w-8 h-8 rounded-full bg-black/20 flex items-center justify-center backdrop-blur-sm">
+                    <i className={`fa-solid ${icon}`}></i>
+                </div>
+                <span>{label}</span>
+             </div>
+             
+             <div className="text-right">
+                <div className="text-xl font-black text-white font-[Rajdhani] leading-none">{value}</div>
+                {percent !== 100 && <div className="text-[10px] font-bold text-white/80">{percent}% conv.</div>}
+             </div>
+             
+             {/* Shine Effect */}
+             <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+        </div>
+    </div>
+);
+
 const StatCard = ({ icon, label, value, color }: any) => (
     <div className={`p-6 rounded-2xl border-l-4 border-${color}-500 bg-slate-800/50 relative overflow-hidden group hover:bg-slate-800 transition`}>
         <div className="absolute right-[-10px] top-[-10px] opacity-[0.05] group-hover:opacity-[0.1] transition-all transform group-hover:scale-110 duration-500"><i className={`fa-solid ${icon} text-9xl text-white`}></i></div>
@@ -408,23 +500,6 @@ const StatCard = ({ icon, label, value, color }: any) => (
         <h3 className="text-3xl font-bold mt-2 font-mono">{value}</h3>
     </div>
 );
-
-const FunnelBar = ({ label, value, max, color, icon }: any) => {
-    const percent = max > 0 ? Math.min(100, (value / max) * 100) : 0;
-    return (
-        <div className="relative">
-            <div className="flex justify-between text-sm mb-2 items-center">
-                <span className="text-slate-300 font-medium flex items-center gap-2"><i className={`fa-solid ${icon} w-4 text-center opacity-70`}></i> {label}</span>
-                <span className="font-bold text-white font-mono">{value} <span className="text-slate-500 text-xs font-normal ml-1">({percent.toFixed(1)}%)</span></span>
-            </div>
-            <div className="w-full h-4 bg-slate-900/80 rounded-full overflow-hidden border border-slate-700/50">
-                <div className={`h-full ${color} transition-all duration-1000 relative`} style={{ width: `${percent}%` }}>
-                     <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-                </div>
-            </div>
-        </div>
-    );
-}
 
 const OrdersManager = ({ token, toast }: any) => {
     const [orders, setOrders] = useState<Order[]>([]);
@@ -743,7 +818,6 @@ const SettingsManager = ({ token, toast }: any) => {
                     </div>
                 </div>
 
-                {/* Submit Button */}
                 <div className="md:col-span-2 flex justify-end pt-4">
                     <button type="submit" className={STYLES.btnPrimary + " px-10 py-4 text-lg shadow-2xl"}>
                         <i className="fa-solid fa-floppy-disk mr-2"></i> Salvar Alterações
