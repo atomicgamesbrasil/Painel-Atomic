@@ -3,7 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { createPortal } from 'react-dom';
 
 // --- CONFIGURATION & UTILS ---
-const API_BASE_URL = "/api";
+// CRITICAL FIX: Absolute URL to ensure Admin Panel connects to Backend regardless of hosting
+const API_BASE_URL = "https://painel-atomic.onrender.com/api";
 
 const formatCurrencyInput = (value: string): string => {
     const cleanValue = value.replace(/\D/g, "");
@@ -14,9 +15,10 @@ const formatCurrencyInput = (value: string): string => {
     });
 };
 
-// --- STYLES CONSTANTS (Replaces GlobalStyles for Reliability) ---
+// --- STYLES CONSTANTS ---
 const STYLES = {
-    input: "w-full bg-slate-950 border border-slate-700 rounded-xl p-3.5 text-white placeholder-slate-500 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition-all shadow-inner font-medium",
+    // Force Dark Mode colors with !important to prevent conflicts
+    input: "w-full bg-slate-950 text-white border border-slate-700 rounded-xl p-3.5 placeholder-slate-500 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition-all shadow-inner font-medium",
     label: "text-xs font-bold text-slate-400 uppercase mb-2 block tracking-wider",
     btnPrimary: "bg-gradient-to-r from-yellow-500 to-orange-600 text-black font-bold rounded-xl shadow-lg hover:shadow-orange-500/20 transition-all transform active:scale-95 px-6 py-3 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2",
     btnSecondary: "px-6 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors font-medium border border-transparent hover:border-slate-700",
@@ -31,6 +33,7 @@ const api = {
         if (token) headers['Authorization'] = `Bearer ${token}`;
         
         try {
+            // endpoint starts with /, API_BASE_URL ends without /
             const res = await fetch(`${API_BASE_URL}${endpoint}`, {
                 method,
                 headers,
