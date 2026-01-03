@@ -1,7 +1,7 @@
 /**
  * ATOMIC BACKEND SERVER
- * Serve a API de segurança E o Frontend do Painel
- * ARQUIVO: JavaScript Puro (CommonJS) - Não adicionar interfaces TS aqui.
+ * Architecture: Monolithic with Service Layer Pattern
+ * Standard: CommonJS (Node.js)
  */
 
 const express = require('express');
@@ -10,348 +10,383 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 const { Octokit } = require("@octokit/rest");
 
+// --- CONFIGURATION & CONSTANTS ---
+const CONFIG = {
+    PORT: process.env.PORT || 3000,
+    GITHUB: {
+        OWNER: 'atomicgamesbrasil',
+        REPO: 'siteoficial',
+        BRANCH: 'main',
+        TOKEN: process.env.GITHUB_TOKEN
+    },
+    JWT_SECRET: process.env.JWT_SECRET || 'dev_secret_key_change_me',
+    ADMIN_PASS: process.env.ADMIN_PASSWORD || process.env.SENHA_DE_ADMINISTRADOR || 'admin',
+    PATHS: {
+        PRODUCTS: 'produtos.json',
+        BANNERS: 'banners.json',
+        ORDERS: 'orders.json',
+        CONFIG: 'site-config.json',
+        STATS: 'stats.json',
+        IMG_SITE: 'img site',
+        IMG_BANNER: 'BANNER SAZIONAL'
+    }
+};
+
+// --- VALIDATION ---
+if (!CONFIG.GITHUB.TOKEN) {
+    console.error("🚨 [CRITICAL] GITHUB_TOKEN is missing. The server cannot persist data.");
+    process.exit(1);
+}
+
+// --- INITIALIZATION ---
 const app = express();
-const PORT = process.env.PORT || 3000;
+const octokit = new Octokit({ auth: CONFIG.GITHUB.TOKEN });
 
-// Configuração de Segurança - CORS Permissivo para evitar bloqueios do Site Oficial
-app.use(cors()); 
-app.use(express.json({ limit: '50mb' }));
+// Middleware
+app.use(cors()); // Allow Cross-Origin for public access
+app.use(express.json({ limit: '50mb' })); // Support large image uploads
+app.use(express.static(__dirname)); // Serve Frontend
 
-// --- SERVIR ARQUIVOS DO FRONTEND ---
-app.use(express.static(__dirname));
+// --- DATA LAYER (GITHUB SERVICE) ---
+// Encapsulates all interactions with the persistence layer
+const DatabaseService = {
+    // In-Memory Cache to reduce latency and API calls
+    cache: {
+        stats: { total_visits: 0, today_visits: 0, last_updated: new Date().toISOString(), sha: null },
+        orders: { content: [], sha: null },
+        isStatsDirty: false
+    },
 
-// --- CONFIGURAÇÃO DO REPOSITÓRIO ---
-const REPO_OWNER = 'atomicgamesbrasil';
-const REPO_NAME = 'siteoficial';
-const BRANCH = 'main';
+    async getFile(filePath) {
+        try {
+            const { data } = await octokit.rest.repos.getContent({
+                owner: CONFIG.GITHUB.OWNER,
+                repo: CONFIG.GITHUB.REPO,
+                path: filePath,
+                ref: CONFIG.GITHUB.BRANCH,
+            });
 
-// ARQUIVOS
-const PATH_PRODUCTS = 'produtos.json'; 
-const PATH_BANNERS = 'banners.json';
-const PATH_ORDERS = 'orders.json';
-const PATH_CONFIG = 'site-config.json';
-const PATH_STATS = 'stats.json';
-const PATH_IMG_SITE = 'img site';
-const PATH_IMG_BANNER = 'BANNER SAZIONAL';
+            if (data.content) {
+                const decoded = Buffer.from(data.content, 'base64').toString('utf-8');
+                return { content: JSON.parse(decoded), sha: data.sha };
+            }
+            return { content: [], sha: data.sha };
+        } catch (e) {
+            if (e.status === 404) {
+                console.log(`ℹ️ [DB] File not found: ${filePath}. Assuming empty/new.`);
+                return { content: null, sha: null };
+            }
+            console.error(`⚠️ [DB ERROR] Read failed for ${filePath}:`, e.message);
+            throw e;
+        }
+    },
 
-// --- IN-MEMORY CACHE ---
-let cachedStats = {
-    total_visits: 0,
-    today_visits: 0,
-    last_updated: new Date().toISOString(),
-    sha: null
-};
-
-// CACHE DE PEDIDOS
-let cachedOrders = {
-    content: [],
-    sha: null,
-    initialized: false
-};
-
-let isStatsDirty = false;
-
-if (!process.env.GITHUB_TOKEN) {
-    console.error("❌ [CRÍTICO] GITHUB_TOKEN não encontrado!");
-}
-
-const octokit = new Octokit({ 
-  auth: process.env.GITHUB_TOKEN 
-});
-
-// Middleware de Autenticação
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) return res.status(401).json({ message: 'Token não fornecido' });
-
-  const secret = process.env.JWT_SECRET || 'dev_secret_key_change_me';
-
-  jwt.verify(token, secret, (err, user) => {
-    if (err) return res.status(403).json({ message: 'Token inválido' });
-    req.user = user;
-    next();
-  });
-};
-
-// --- FUNÇÕES AUXILIARES ---
-async function getFileContent(filePath) {
-    try {
-        const { data } = await octokit.rest.repos.getContent({
-            owner: REPO_OWNER, repo: REPO_NAME, path: filePath, ref: BRANCH,
-        });
-        if (data.content) {
-             return {
-                content: JSON.parse(Buffer.from(data.content, 'base64').toString('utf-8')),
-                sha: data.sha
+    async saveFile(filePath, content, commitMessage, sha = null) {
+        try {
+            const base64Content = Buffer.from(JSON.stringify(content, null, 2)).toString('base64');
+            const params = {
+                owner: CONFIG.GITHUB.OWNER,
+                repo: CONFIG.GITHUB.REPO,
+                path: filePath,
+                message: commitMessage,
+                content: base64Content,
+                branch: CONFIG.GITHUB.BRANCH
             };
+            if (sha) params.sha = sha;
+
+            const { data } = await octokit.rest.repos.createOrUpdateFileContents(params);
+            return data.content.sha;
+        } catch (e) {
+            console.error(`❌ [DB ERROR] Save failed for ${filePath}:`, e.message);
+            throw e;
         }
-        return { content: [], sha: data.sha };
-    } catch (e) {
-        if (e.status === 404) {
-            console.log(`ℹ️ Arquivo novo (não encontrado): ${filePath}. Será criado.`);
-            return { content: null, sha: null };
-        }
-        console.error(`⚠️ [GITHUB ERROR] Falha ao ler ${filePath}:`, e.message);
-        return { content: null, sha: null }; 
-    }
-}
+    },
 
-async function saveFileContent(path, content, message, sha = null) {
-    const base64Content = Buffer.from(JSON.stringify(content, null, 2)).toString('base64');
-    const params = {
-        owner: REPO_OWNER, repo: REPO_NAME, path: path, 
-        message: message, content: base64Content, branch: BRANCH
-    };
-    if (sha) params.sha = sha;
-    const { data } = await octokit.rest.repos.createOrUpdateFileContents(params);
-    return data.content.sha; // Retorna novo SHA
-}
+    async uploadImage(filename, base64Content, folder) {
+        const targetPath = folder === 'banners' 
+            ? `${CONFIG.PATHS.IMG_BANNER}/${filename}` 
+            : `${CONFIG.PATHS.IMG_SITE}/${filename}`;
+        
+        let sha = null;
+        try {
+            // Check if file exists to update instead of create (get SHA)
+            const { data } = await octokit.rest.repos.getContent({
+                owner: CONFIG.GITHUB.OWNER,
+                repo: CONFIG.GITHUB.REPO,
+                path: targetPath,
+                ref: CONFIG.GITHUB.BRANCH
+            });
+            sha = data.sha;
+        } catch (e) { /* File doesn't exist, proceed with create */ }
 
-// --- LOGIC: MEMORY INITIALIZATION ---
-async function initializeData() {
-    console.log("🔄 Inicializando Cache de Dados...");
-    
-    // 1. Carrega Stats
-    const statsData = await getFileContent(PATH_STATS);
-    if(statsData.content) {
-        cachedStats = { ...statsData.content, sha: statsData.sha };
-    } else {
-        // Inicializa zerado se não existir
-        cachedStats = { total_visits: 0, today_visits: 0, last_updated: new Date().toISOString(), sha: null };
-    }
+        await octokit.rest.repos.createOrUpdateFileContents({
+            owner: CONFIG.GITHUB.OWNER,
+            repo: CONFIG.GITHUB.REPO,
+            path: targetPath,
+            message: `UPLOAD: ${filename}`,
+            content: base64Content,
+            branch: CONFIG.GITHUB.BRANCH,
+            sha: sha
+        });
 
-    // 2. Carrega Pedidos (COM MERGE INTELIGENTE)
-    // Se pedidos chegarem enquanto o servidor liga, não podemos sobrescrevê-los
-    const ordersData = await getFileContent(PATH_ORDERS);
-    
-    // Pega os pedidos que já estavam no GitHub
-    const githubOrders = Array.isArray(ordersData.content) ? ordersData.content : [];
-    
-    // Pega os pedidos que chegaram na memória RAM enquanto baixávamos do GitHub
-    const pendingOrders = cachedOrders.content;
-    
-    // Junta tudo: Pedidos Novos (RAM) + Pedidos Velhos (GitHub)
-    // Remove duplicatas por ID apenas por segurança
-    const mergedOrders = [...pendingOrders, ...githubOrders].filter((v,i,a)=>a.findIndex(v2=>(v2.id===v.id))===i);
+        return `https://raw.githubusercontent.com/${CONFIG.GITHUB.OWNER}/${CONFIG.GITHUB.REPO}/${CONFIG.GITHUB.BRANCH}/${encodeURI(targetPath)}`;
+    },
 
-    cachedOrders.content = mergedOrders;
-    cachedOrders.sha = ordersData.sha;
-    cachedOrders.initialized = true;
-    
-    console.log(`✅ Dados Prontos. ${cachedOrders.content.length} Pedidos ativos.`);
-}
+    async initialize() {
+        console.log("🔄 [SYSTEM] Hydrating In-Memory Cache...");
+        
+        // 1. Stats
+        const stats = await this.getFile(CONFIG.PATHS.STATS);
+        if (stats.content) this.cache.stats = { ...stats.content, sha: stats.sha };
 
-async function flushStatsToGitHub() {
-    if(!isStatsDirty) return;
-    try {
-        console.log("💾 Sincronizando Stats...");
-        cachedStats.last_updated = new Date().toISOString();
-        const contentToSave = { 
-            total_visits: cachedStats.total_visits,
-            today_visits: cachedStats.today_visits,
-            last_updated: cachedStats.last_updated
+        // 2. Orders
+        const orders = await this.getFile(CONFIG.PATHS.ORDERS);
+        const storedOrders = Array.isArray(orders.content) ? orders.content : [];
+        // Merge strategy: RAM (Newest) + Disk (Stored), unique by ID
+        const merged = [...this.cache.orders.content, ...storedOrders]
+            .filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i);
+        
+        this.cache.orders.content = merged;
+        this.cache.orders.sha = orders.sha;
+
+        console.log(`✅ [SYSTEM] Ready. Active Orders: ${this.cache.orders.content.length}`);
+    },
+
+    async flushStats() {
+        if (!this.cache.isStatsDirty) return;
+        console.log("💾 [AUTO] Syncing Stats to GitHub...");
+        
+        this.cache.stats.last_updated = new Date().toISOString();
+        const payload = { 
+            total_visits: this.cache.stats.total_visits, 
+            today_visits: this.cache.stats.today_visits,
+            last_updated: this.cache.stats.last_updated
         };
-        const newSha = await saveFileContent(PATH_STATS, contentToSave, "AUTO: Update Stats", cachedStats.sha);
-        cachedStats.sha = newSha;
-        isStatsDirty = false;
-    } catch(e) { console.error("❌ Falha ao salvar Stats:", e.message); }
-}
 
-initializeData();
-setInterval(flushStatsToGitHub, 10 * 60 * 1000); 
-
-// --- ROTAS ---
-
-app.get('/health', (req, res) => res.status(200).send('OK'));
-
-app.get('/api/public/wake', (req, res) => {
-    // Endpoint leve para acordar o servidor
-    res.json({ status: 'awake', time: new Date().toISOString() });
-});
-
-app.post('/api/auth/login', (req, res) => {
-  try {
-    const { password } = req.body || {};
-    const serverPassword = process.env.ADMIN_PASSWORD || process.env.SENHA_DE_ADMINISTRADOR || 'admin';
-    if (password === serverPassword) {
-      const user = { role: 'admin' };
-      const secret = process.env.JWT_SECRET || 'dev_secret_key_change_me';
-      const accessToken = jwt.sign(user, secret, { expiresIn: '8h' });
-      return res.json({ token: accessToken });
-    } else {
-      return res.status(401).json({ message: 'Senha incorreta' });
+        try {
+            const newSha = await this.saveFile(CONFIG.PATHS.STATS, payload, "AUTO: Update Stats", this.cache.stats.sha);
+            this.cache.stats.sha = newSha;
+            this.cache.isStatsDirty = false;
+        } catch (e) {
+            console.error("❌ [AUTO] Stats Sync Failed");
+        }
     }
-  } catch (error) { return res.status(500).json({ message: 'Erro interno.' }); }
+};
+
+// --- AUTH MIDDLEWARE ---
+const requireAuth = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) return res.status(401).json({ message: 'Unauthorized: No token' });
+
+    jwt.verify(token, CONFIG.JWT_SECRET, (err, user) => {
+        if (err) return res.status(403).json({ message: 'Forbidden: Invalid token' });
+        req.user = user;
+        next();
+    });
+};
+
+// --- ROUTES ---
+
+// System
+app.get('/health', (req, res) => res.status(200).send('OK'));
+app.get('/api/public/wake', (req, res) => res.json({ status: 'awake', ts: Date.now() }));
+
+// Auth
+app.post('/api/auth/login', (req, res) => {
+    const { password } = req.body || {};
+    if (password === CONFIG.ADMIN_PASS) {
+        const token = jwt.sign({ role: 'admin' }, CONFIG.JWT_SECRET, { expiresIn: '8h' });
+        return res.json({ token });
+    }
+    return res.status(401).json({ message: 'Invalid credentials' });
 });
 
-app.get('/api/products', authenticateToken, async (req, res) => {
-  try {
-    const data = await getFileContent(PATH_PRODUCTS);
-    res.json(data.content || []);
-  } catch (error) { res.status(500).json({ message: 'Erro ao buscar produtos.' }); }
+// Products
+app.get('/api/products', requireAuth, async (req, res) => {
+    try {
+        const data = await DatabaseService.getFile(CONFIG.PATHS.PRODUCTS);
+        res.json(data.content || []);
+    } catch (e) { res.status(500).json({ message: 'Failed to fetch products' }); }
 });
 
-app.post('/api/products', authenticateToken, async (req, res) => {
-  try {
-    const product = req.body;
-    delete product.isEdit;
-    const currentData = await getFileContent(PATH_PRODUCTS);
-    let newProducts = Array.isArray(currentData.content) ? [...currentData.content] : [];
-    const index = newProducts.findIndex(p => p.id === product.id);
-    if (index !== -1) newProducts[index] = product;
-    else newProducts.unshift(product);
-    await saveFileContent(PATH_PRODUCTS, newProducts, `UPDATE: ${product.name}`, currentData.sha);
-    res.json({ message: 'Salvo com sucesso' });
-  } catch (error) { res.status(500).json({ message: 'Erro ao salvar.' }); }
+app.post('/api/products', requireAuth, async (req, res) => {
+    try {
+        const product = req.body;
+        delete product.isEdit; // Clean UI flags
+        
+        const dbData = await DatabaseService.getFile(CONFIG.PATHS.PRODUCTS);
+        let products = Array.isArray(dbData.content) ? [...dbData.content] : [];
+        
+        const idx = products.findIndex(p => p.id === product.id);
+        if (idx !== -1) products[idx] = product;
+        else products.unshift(product);
+
+        await DatabaseService.saveFile(CONFIG.PATHS.PRODUCTS, products, `UPDATE: Product ${product.name}`, dbData.sha);
+        res.json({ message: 'Product saved' });
+    } catch (e) { res.status(500).json({ message: 'Failed to save product' }); }
 });
 
-app.delete('/api/products/:id', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const currentData = await getFileContent(PATH_PRODUCTS);
-    const newProducts = (currentData.content || []).filter(p => p.id !== id);
-    await saveFileContent(PATH_PRODUCTS, newProducts, `DEL: ${id}`, currentData.sha);
-    res.json({ message: 'Removido' });
-  } catch (error) { res.status(500).json({ message: 'Erro ao deletar' }); }
+app.delete('/api/products/:id', requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const dbData = await DatabaseService.getFile(CONFIG.PATHS.PRODUCTS);
+        const filtered = (dbData.content || []).filter(p => p.id !== id);
+        
+        await DatabaseService.saveFile(CONFIG.PATHS.PRODUCTS, filtered, `DELETE: Product ${id}`, dbData.sha);
+        res.json({ message: 'Product deleted' });
+    } catch (e) { res.status(500).json({ message: 'Failed to delete product' }); }
 });
 
-app.get('/api/banners', authenticateToken, async (req, res) => {
-  try { const data = await getFileContent(PATH_BANNERS); res.json(data.content || []); } 
-  catch (error) { res.status(500).json({ message: 'Erro banners' }); }
+// Banners
+app.get('/api/banners', requireAuth, async (req, res) => {
+    try {
+        const data = await DatabaseService.getFile(CONFIG.PATHS.BANNERS);
+        res.json(data.content || []);
+    } catch (e) { res.status(500).json({ message: 'Failed to fetch banners' }); }
 });
 
-app.post('/api/banners', authenticateToken, async (req, res) => {
-  try {
-    const bannersData = req.body;
-    const currentData = await getFileContent(PATH_BANNERS);
-    await saveFileContent(PATH_BANNERS, bannersData, "UPDATE: Banners", currentData.sha);
-    res.json({ message: 'Banners salvos' });
-  } catch (error) { res.status(500).json({ message: 'Erro salvar banners' }); }
+app.post('/api/banners', requireAuth, async (req, res) => {
+    try {
+        const dbData = await DatabaseService.getFile(CONFIG.PATHS.BANNERS);
+        await DatabaseService.saveFile(CONFIG.PATHS.BANNERS, req.body, "UPDATE: Banners", dbData.sha);
+        res.json({ message: 'Banners saved' });
+    } catch (e) { res.status(500).json({ message: 'Failed to save banners' }); }
 });
 
-// PEDIDOS (ADMIN)
-app.get('/api/orders', authenticateToken, (req, res) => {
-  res.json(cachedOrders.content);
+// Orders (Admin)
+app.get('/api/orders', requireAuth, (req, res) => {
+    // Serve from cache for speed
+    res.json(DatabaseService.cache.orders.content);
 });
 
-app.post('/api/orders/update', authenticateToken, async (req, res) => {
+app.post('/api/orders/update', requireAuth, async (req, res) => {
     try {
         const { orderId, status } = req.body;
-        const index = cachedOrders.content.findIndex(o => o.id === orderId);
-        if (index !== -1) {
-            cachedOrders.content[index].status = status;
-            const newSha = await saveFileContent(PATH_ORDERS, cachedOrders.content, `UPDATE ORDER: ${orderId}`, cachedOrders.sha);
-            cachedOrders.sha = newSha;
+        const list = DatabaseService.cache.orders.content;
+        const idx = list.findIndex(o => o.id === orderId);
+
+        if (idx !== -1) {
+            list[idx].status = status;
+            // Optimistic update in cache, then async save
+            const newSha = await DatabaseService.saveFile(CONFIG.PATHS.ORDERS, list, `UPDATE ORDER: ${orderId}`, DatabaseService.cache.orders.sha);
+            DatabaseService.cache.orders.sha = newSha;
             res.json({ success: true });
-        } else { res.status(404).json({ message: 'Pedido não encontrado' }); }
-    } catch (e) { res.status(500).json({ message: 'Erro ao atualizar pedido' }); }
+        } else {
+            res.status(404).json({ message: 'Order not found' });
+        }
+    } catch (e) { res.status(500).json({ message: 'Failed to update order' }); }
 });
 
-app.post('/api/orders', authenticateToken, async (req, res) => {
+app.post('/api/orders', requireAuth, async (req, res) => {
+    // Admin manual creation
     try {
         const { customer, items, total, status } = req.body;
         const newOrder = {
             id: Date.now().toString().slice(-6),
-            customer: customer || "Cliente Manual",
-            items: items || "Venda Balcão/Direct",
+            customer: customer || "Manual Entry",
+            items: items || "Direct Sale",
             total: total || "R$ 0,00",
             status: status || "approved",
-            date: new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR')
+            date: new Date().toLocaleString('pt-BR')
         };
-        cachedOrders.content.unshift(newOrder);
-        if (cachedOrders.content.length > 100) cachedOrders.content = cachedOrders.content.slice(0, 100);
-        const newSha = await saveFileContent(PATH_ORDERS, cachedOrders.content, `ADMIN NEW ORDER: ${newOrder.id}`, cachedOrders.sha);
-        cachedOrders.sha = newSha;
+        
+        DatabaseService.cache.orders.content.unshift(newOrder);
+        // Trim history to keep JSON file manageable (optional, currently 100)
+        if (DatabaseService.cache.orders.content.length > 100) {
+            DatabaseService.cache.orders.content = DatabaseService.cache.orders.content.slice(0, 100);
+        }
+
+        const newSha = await DatabaseService.saveFile(CONFIG.PATHS.ORDERS, DatabaseService.cache.orders.content, `ADMIN ORDER: ${newOrder.id}`, DatabaseService.cache.orders.sha);
+        DatabaseService.cache.orders.sha = newSha;
         res.json({ success: true, orderId: newOrder.id });
-    } catch (e) { res.status(500).json({ message: 'Erro ao criar pedido' }); }
+    } catch (e) { res.status(500).json({ message: 'Failed to create order' }); }
 });
 
-// PEDIDOS (PÚBLICO)
+// Orders (Public)
 app.post('/api/public/order', async (req, res) => {
     try {
-        console.log("📨 RECEBIDO PEDIDO PÚBLICO");
-        console.log("BODY:", req.body); // Log do payload para debug
-        
         const { customer, items, total } = req.body;
         
         if (!customer || !total) {
-            console.log("⚠️ Pedido rejeitado: Dados incompletos");
-            return res.status(400).json({ message: 'Dados incompletos' });
+            return res.status(400).json({ message: 'Missing required fields' });
         }
 
         const newOrder = {
             id: Date.now().toString().slice(-6),
             customer: customer,
-            items: items || "Pedido via Site",
+            items: items || "Web Order",
             total: total,
             status: "pending",
-            date: new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR')
+            date: new Date().toLocaleString('pt-BR')
         };
 
-        // Salva na memória IMEDIATAMENTE
-        cachedOrders.content.unshift(newOrder);
-        if (cachedOrders.content.length > 100) cachedOrders.content = cachedOrders.content.slice(0, 100);
+        // 1. Save to RAM immediately (Fastest response)
+        DatabaseService.cache.orders.content.unshift(newOrder);
+        if (DatabaseService.cache.orders.content.length > 100) {
+            DatabaseService.cache.orders.content = DatabaseService.cache.orders.content.slice(0, 100);
+        }
 
-        console.log(`✅ Pedido #${newOrder.id} registrado na memória.`);
-
-        // Retorna sucesso para o site (rápido)
+        console.log(`📨 [PUBLIC] Order #${newOrder.id} received`);
         res.json({ success: true, orderId: newOrder.id });
 
-        // Tenta persistir no GitHub (fundo)
+        // 2. Persist to Disk asynchronously (Don't block response)
         try {
-            const newSha = await saveFileContent(PATH_ORDERS, cachedOrders.content, `NEW ORDER: ${newOrder.id}`, cachedOrders.sha);
-            cachedOrders.sha = newSha;
-            console.log("💾 Pedido persistido no GitHub.");
-        } catch (err) {
-            console.error("⚠️ Erro ao salvar no GitHub (mas está na RAM):", err.message);
+            const newSha = await DatabaseService.saveFile(CONFIG.PATHS.ORDERS, DatabaseService.cache.orders.content, `NEW ORDER: ${newOrder.id}`, DatabaseService.cache.orders.sha);
+            DatabaseService.cache.orders.sha = newSha;
+        } catch (e) {
+            console.error("⚠️ [RISK] Order saved to RAM but failed to sync to GitHub:", e.message);
         }
 
     } catch (e) {
-        console.error("❌ Erro fatal ao processar pedido:", e);
-        res.status(500).json({ message: 'Erro interno' });
+        console.error("❌ [CRITICAL] Public Order Error:", e);
+        res.status(500).json({ message: 'Internal Error' });
     }
 });
 
-// ANALYTICS
-app.get('/api/stats', authenticateToken, async (req, res) => res.json(cachedStats));
+// Analytics
+app.get('/api/stats', requireAuth, (req, res) => res.json(DatabaseService.cache.stats));
 
-app.post('/api/public/track', async (req, res) => {
-    cachedStats.total_visits = (cachedStats.total_visits || 0) + 1;
-    cachedStats.today_visits = (cachedStats.today_visits || 0) + 1;
-    isStatsDirty = true;
+app.post('/api/public/track', (req, res) => {
+    DatabaseService.cache.stats.total_visits = (DatabaseService.cache.stats.total_visits || 0) + 1;
+    DatabaseService.cache.stats.today_visits = (DatabaseService.cache.stats.today_visits || 0) + 1;
+    DatabaseService.cache.isStatsDirty = true;
     res.json({ success: true });
 });
 
-// CONFIG
-app.get('/api/config', authenticateToken, async (req, res) => {
-    try { const data = await getFileContent(PATH_CONFIG); res.json(data.content || {}); } 
-    catch (error) { res.status(500).json({ message: 'Erro config' }); }
-});
-
-app.post('/api/config', authenticateToken, async (req, res) => {
+// Config
+app.get('/api/config', requireAuth, async (req, res) => {
     try {
-        const newConfig = req.body;
-        const currentData = await getFileContent(PATH_CONFIG);
-        await saveFileContent(PATH_CONFIG, newConfig, "UPDATE: Site Config", currentData.sha);
-        res.json({ message: 'Configurações salvas' });
-    } catch (error) { res.status(500).json({ message: 'Erro salvar config' }); }
+        const data = await DatabaseService.getFile(CONFIG.PATHS.CONFIG);
+        res.json(data.content || {});
+    } catch (e) { res.status(500).json({ message: 'Fetch config error' }); }
 });
 
-// UPLOAD
-app.post('/api/upload', authenticateToken, async (req, res) => {
-  try {
-    const { filename, content, folder } = req.body;
-    let targetPath = folder === 'banners' ? `${PATH_IMG_BANNER}/${filename}` : `${PATH_IMG_SITE}/${filename}`;
-    let sha = null;
-    try { const { data } = await octokit.rest.repos.getContent({ owner: REPO_OWNER, repo: REPO_NAME, path: targetPath, ref: BRANCH }); sha = data.sha; } catch (e) {}
-    await octokit.rest.repos.createOrUpdateFileContents({ owner: REPO_OWNER, repo: REPO_NAME, path: targetPath, message: `UPLOAD: ${filename}`, content: content, branch: BRANCH, sha: sha });
-    const rawUrl = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH}/${encodeURI(targetPath)}`;
-    res.json({ url: rawUrl });
-  } catch (error) { res.status(500).json({ message: 'Erro upload' }); }
+app.post('/api/config', requireAuth, async (req, res) => {
+    try {
+        const dbData = await DatabaseService.getFile(CONFIG.PATHS.CONFIG);
+        await DatabaseService.saveFile(CONFIG.PATHS.CONFIG, req.body, "UPDATE: Site Config", dbData.sha);
+        res.json({ message: 'Config saved' });
+    } catch (e) { res.status(500).json({ message: 'Save config error' }); }
 });
 
+// Uploads
+app.post('/api/upload', requireAuth, async (req, res) => {
+    try {
+        const { filename, content, folder } = req.body;
+        const url = await DatabaseService.uploadImage(filename, content, folder);
+        res.json({ url });
+    } catch (e) { res.status(500).json({ message: 'Upload failed' }); }
+});
+
+// Fallback
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-app.listen(PORT, () => console.log(`\n✅ Servidor Atomic rodando na porta ${PORT}`));
+// --- STARTUP SEQUENCE ---
+DatabaseService.initialize().then(() => {
+    app.listen(CONFIG.PORT, () => console.log(`\n🚀 [SERVER] Atomic Backend Online on Port ${CONFIG.PORT}`));
+    
+    // Auto-sync stats every 10 minutes
+    setInterval(() => DatabaseService.flushStats(), 10 * 60 * 1000);
+});
