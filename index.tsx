@@ -50,6 +50,24 @@ interface ToastMsg {
   text: string;
 }
 
+// HELPER: Formatação Monetária Automática
+const formatCurrencyInput = (value: string): string => {
+    // 1. Remove tudo que não é dígito
+    const cleanValue = value.replace(/\D/g, "");
+    
+    // 2. Se estiver vazio, retorna vazio
+    if (!cleanValue) return "";
+
+    // 3. Converte para número e divide por 100 (centavos)
+    const numberValue = parseInt(cleanValue, 10) / 100;
+
+    // 4. Formata para BRL
+    return numberValue.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    });
+};
+
 // COMPONENTES
 const App = () => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('admin_token'));
@@ -607,7 +625,7 @@ const OrderCreateModal = ({ token, onClose, onSave, toast }: any) => {
                      <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="text-xs font-bold text-slate-400 uppercase">Valor Total</label>
-                            <input required type="text" value={form.total} onChange={e => setForm({...form, total: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded p-2 mt-1 text-white focus:border-blue-500 outline-none" placeholder="0,00" />
+                            <input required type="text" value={form.total} onChange={e => setForm({...form, total: formatCurrencyInput(e.target.value)})} className="w-full bg-slate-800 border border-slate-600 rounded p-2 mt-1 text-white focus:border-blue-500 outline-none" placeholder="R$ 0,00" />
                         </div>
                         <div>
                              <label className="text-xs font-bold text-slate-400 uppercase">Status Inicial</label>
@@ -904,7 +922,7 @@ const ProductModal = ({ token, item, onClose, onSave, toast }: any) => {
          <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto custom-scroll">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2"><label className="text-xs font-bold text-slate-400 uppercase">Nome</label><input required className="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
-              <div><label className="text-xs font-bold text-slate-400 uppercase">Preço</label><input required className="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} /></div>
+              <div><label className="text-xs font-bold text-slate-400 uppercase">Preço</label><input required className="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" value={formData.price} onChange={e => setFormData({...formData, price: formatCurrencyInput(e.target.value)})} placeholder="R$ 0,00" /></div>
               <div><label className="text-xs font-bold text-slate-400 uppercase">Categoria</label><select className="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-white focus:border-yellow-500" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}><option value="games">Jogos</option><option value="console">Consoles</option><option value="acessorios">Acessórios</option><option value="hardware">Hardware</option></select></div>
               <div className="col-span-2"><label className="text-xs font-bold text-slate-400 uppercase">Imagem</label><input type="file" accept="image/*" onChange={e => setFile(e.target.files?.[0] || null)} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-500 file:text-black hover:file:bg-yellow-400"/></div>
               
