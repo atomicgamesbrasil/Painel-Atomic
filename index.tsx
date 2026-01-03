@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createPortal } from 'react-dom';
@@ -587,19 +588,55 @@ const CreateOrderModal = ({ onClose, onSave }: any) => {
     );
 };
 
-const OrderDetailsModal = ({ order, onClose }: any) => (
-    <ModalBase title={`Pedido #${order.id}`} onClose={onClose}>
-        <div className="space-y-6" id="print-area">
-            <div className="flex justify-between items-start border-b border-slate-700 pb-4">
-                <div><p className="text-sm text-slate-400">Cliente</p><p className="text-xl font-bold">{order.customer}</p></div>
-                <div className="text-right"><p className="text-sm text-slate-400">Data</p><p className="font-mono">{order.date}</p></div>
+const OrderDetailsModal = ({ order, onClose }: any) => {
+    // Parser simples para transformar a string de itens em uma lista visual
+    const itemsList = order.items.split('|').map((item: string) => item.trim());
+
+    return (
+        <ModalBase title={`Pedido #${order.id}`} onClose={onClose}>
+            <div className="space-y-6" id="print-area">
+                <div className="flex justify-between items-start border-b border-slate-700 pb-4">
+                    <div><p className="text-sm text-slate-400 uppercase font-bold tracking-wider">Cliente</p><p className="text-xl font-bold">{order.customer}</p></div>
+                    <div className="text-right"><p className="text-sm text-slate-400 uppercase font-bold tracking-wider">Data</p><p className="font-mono text-slate-300">{order.date}</p></div>
+                </div>
+                
+                {/* Visual Cupom Fiscal */}
+                <div className="bg-white text-black p-6 rounded-sm shadow-xl font-mono text-sm relative">
+                    {/* Serrilhado fake top */}
+                    <div className="absolute top-0 left-0 w-full h-2 bg-slate-900" style={{clipPath: 'polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)'}}></div>
+                    
+                    <div className="text-center border-b-2 border-dashed border-black/20 pb-4 mb-4 mt-2">
+                        <h4 className="font-bold text-lg uppercase">Atomic Games</h4>
+                        <p className="text-xs">Pedido de Venda</p>
+                    </div>
+
+                    <div className="space-y-2 mb-4">
+                        {itemsList.map((item: string, idx: number) => (
+                            <div key={idx} className="flex justify-between items-start">
+                                <span className="mr-2">•</span>
+                                <span className="flex-1">{item}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="border-t-2 border-dashed border-black/20 pt-4 flex justify-between items-center text-lg font-bold">
+                        <span>TOTAL</span>
+                        <span>{order.total}</span>
+                    </div>
+
+                    <div className="mt-8 text-center text-xs opacity-50">
+                        <p>Obrigado pela preferência!</p>
+                        <p>www.atomicgames.com.br</p>
+                    </div>
+
+                    {/* Serrilhado fake bottom */}
+                    <div className="absolute bottom-0 left-0 w-full h-2 bg-slate-900" style={{clipPath: 'polygon(0% 100%, 5% 0%, 10% 100%, 15% 0%, 20% 100%, 25% 0%, 30% 100%, 35% 0%, 40% 100%, 45% 0%, 50% 100%, 55% 0%, 60% 100%, 65% 0%, 70% 100%, 75% 0%, 80% 100%, 85% 0%, 90% 100%, 95% 0%, 100% 100%)'}}></div>
+                </div>
             </div>
-            <div className="bg-slate-800 p-4 rounded-lg border border-slate-700"><p className="text-sm text-slate-400 mb-1">Itens</p><p className="whitespace-pre-wrap">{order.items}</p></div>
-            <div className="flex justify-between items-center text-xl font-bold pt-2"><span>Total</span><span className="text-emerald-400">{order.total}</span></div>
-        </div>
-        <div className="mt-6 flex justify-end gap-3 no-print"><button onClick={() => window.print()} className={STYLES.btnSecondary}><i className="fa-solid fa-print mr-2"></i> Imprimir</button></div>
-    </ModalBase>
-);
+            <div className="mt-6 flex justify-end gap-3 no-print"><button onClick={() => window.print()} className={STYLES.btnSecondary}><i className="fa-solid fa-print mr-2"></i> Imprimir</button></div>
+        </ModalBase>
+    );
+};
 
 const ProductsManager = ({ token, products, refresh, toast }: any) => {
     const [search, setSearch] = useState('');
