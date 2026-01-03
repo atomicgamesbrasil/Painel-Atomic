@@ -89,7 +89,11 @@ async function getFileContent(filePath) {
         }
         return { content: [], sha: data.sha };
     } catch (e) {
-        console.error(`⚠️ [GITHUB ERROR] Falha ao ler: ${filePath}`);
+        if (e.status === 404) {
+            console.log(`ℹ️ Arquivo novo (não encontrado): ${filePath}. Será criado.`);
+            return { content: null, sha: null };
+        }
+        console.error(`⚠️ [GITHUB ERROR] Falha ao ler ${filePath}:`, e.message);
         return { content: null, sha: null }; 
     }
 }
@@ -113,6 +117,9 @@ async function initializeData() {
     const statsData = await getFileContent(PATH_STATS);
     if(statsData.content) {
         cachedStats = { ...statsData.content, sha: statsData.sha };
+    } else {
+        // Inicializa zerado se não existir
+        cachedStats = { total_visits: 0, today_visits: 0, last_updated: new Date().toISOString(), sha: null };
     }
 
     // 2. Carrega Pedidos (COM MERGE INTELIGENTE)
