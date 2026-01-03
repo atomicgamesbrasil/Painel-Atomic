@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createPortal } from 'react-dom';
 
-// CONFIG
-const API_BASE_URL = "/api";
+// CONFIG - URL ABSOLUTA PARA GARANTIR CONEXÃO DO PAINEL
+const API_BASE_URL = "https://atomic-thiago-backend.onrender.com/api";
 
 // TYPES
 interface Product {
