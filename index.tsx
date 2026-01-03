@@ -424,9 +424,9 @@ const FunnelSection = ({ stats }: { stats: any }) => {
             </div>
 
             {/* Funnel Container */}
-            <div className="relative flex flex-col items-center gap-2 z-10 flex-1 justify-center">
-                {/* Connecting Line Background */}
-                <div className="absolute top-4 bottom-4 w-0.5 bg-gradient-to-b from-indigo-500/50 via-yellow-500/50 to-emerald-500/50 z-0"></div>
+            <div className="relative flex flex-col items-center gap-4 z-10 flex-1 justify-center py-4">
+                {/* Connecting Dashed Line */}
+                <div className="absolute top-0 bottom-0 w-[1px] border-l border-dashed border-slate-700 z-0"></div>
 
                 {/* Step 1: Visits */}
                 <FunnelStep 
@@ -434,9 +434,9 @@ const FunnelSection = ({ stats }: { stats: any }) => {
                     value={visits} 
                     percent={100} 
                     width={100} 
-                    color="from-indigo-600 to-blue-600" 
+                    accentColor="border-indigo-500" 
                     icon="fa-users"
-                    glow="shadow-indigo-500/20"
+                    iconColor="text-indigo-400"
                 />
 
                 {/* Step 2: Carts */}
@@ -445,9 +445,9 @@ const FunnelSection = ({ stats }: { stats: any }) => {
                     value={carts} 
                     percent={cartPct} 
                     width={wCarts} 
-                    color="from-yellow-500 to-orange-500" 
+                    accentColor="border-yellow-500" 
                     icon="fa-cart-shopping"
-                    glow="shadow-yellow-500/20"
+                    iconColor="text-yellow-400"
                 />
 
                 {/* Step 3: WhatsApp */}
@@ -456,9 +456,9 @@ const FunnelSection = ({ stats }: { stats: any }) => {
                     value={whatsapp} 
                     percent={whatsappPct} 
                     width={wWhatsapp} 
-                    color="from-emerald-500 to-teal-500" 
+                    accentColor="border-emerald-500" 
                     icon="fa-whatsapp"
-                    glow="shadow-emerald-500/20"
+                    iconColor="text-emerald-400"
                 />
             </div>
             
@@ -469,26 +469,30 @@ const FunnelSection = ({ stats }: { stats: any }) => {
     );
 };
 
-const FunnelStep = ({ label, value, percent, width, color, icon, glow }: any) => (
-    <div className="relative w-full flex flex-col items-center group z-10 cursor-default">
+const FunnelStep = ({ label, value, percent, width, accentColor, icon, iconColor }: any) => (
+    <div className="relative w-full flex flex-col items-center group z-10 cursor-default transition-transform hover:scale-[1.01]">
         <div 
-            className={`relative h-14 rounded-xl bg-gradient-to-r ${color} flex items-center justify-between px-6 shadow-lg ${glow} transition-all duration-1000 ease-out hover:scale-[1.02] border border-white/10`}
-            style={{ width: `${width}%`, minWidth: '280px' }}
+            className={`relative h-20 rounded-lg bg-slate-900 border border-slate-700/60 border-l-4 ${accentColor} flex items-center justify-between px-6 shadow-xl`}
+            style={{ width: `${width}%`, minWidth: '300px' }}
         >
-             <div className="flex items-center gap-3 text-white font-bold text-sm truncate">
-                <div className="w-8 h-8 rounded-full bg-black/20 flex items-center justify-center backdrop-blur-sm">
-                    <i className={`fa-solid ${icon}`}></i>
+             {/* Left: Icon & Label */}
+             <div className="flex items-center gap-4">
+                <div className={`w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center border border-slate-700 ${iconColor}`}>
+                    <i className={`fa-solid ${icon} text-lg`}></i>
                 </div>
-                <span>{label}</span>
+                <div>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">{label}</span>
+                </div>
              </div>
-             
+
+             {/* Right: Value & Percent */}
              <div className="text-right">
-                <div className="text-xl font-black text-white font-[Rajdhani] leading-none">{value}</div>
-                {percent !== 100 && <div className="text-[10px] font-bold text-white/80">{percent}% conv.</div>}
+                <div className="text-2xl font-bold text-white font-[Rajdhani]">{value}</div>
+                {percent !== 100 && <div className="text-[11px] font-medium text-slate-500 bg-slate-800 px-2 py-0.5 rounded inline-block mt-1 border border-slate-700/50">{percent}% conv.</div>}
              </div>
              
              {/* Shine Effect */}
-             <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+             <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
         </div>
     </div>
 );
