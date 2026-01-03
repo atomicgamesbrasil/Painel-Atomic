@@ -69,7 +69,12 @@ interface Product { id: string; name: string; price: string; category: string; d
 interface Banner { id: string; image: string; link: string; }
 interface Order { id: string; customer: string; total: string; status: string; date: string; items: string; }
 interface SiteConfig { whatsapp: string; instagram: string; maintenance: boolean; announcement: string; ga_id: string; }
-interface Stats { total_visits: number; today_visits: number; last_updated: string; }
+interface Stats { 
+    total_visits: number; today_visits: number; 
+    total_carts: number; today_carts: number;
+    total_whatsapp: number; today_whatsapp: number;
+    last_updated: string; 
+}
 interface ToastMsg { id: number; type: 'success' | 'error' | 'info'; text: string; }
 
 // --- CUSTOM UI COMPONENTS ---
@@ -174,25 +179,65 @@ const LoginScreen = ({ onLogin }: { onLogin: (t: string) => void }) => {
     };
 
     return (
-        <div className="h-screen w-full flex items-center justify-center relative overflow-hidden bg-slate-900">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-0"></div>
-            <div className="absolute inset-0 z-[-1] bg-[url('https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/img2.jpeg')] bg-cover bg-center opacity-40"></div>
+        <div className="h-screen w-full flex items-center justify-center relative overflow-hidden bg-slate-950 font-[Inter]">
+            {/* Background Image - Standardized with Dashboard */}
+            <div className="absolute inset-0 z-0">
+                <div className="absolute inset-0 bg-[url('https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/img1.jpeg')] bg-cover bg-center opacity-40 blur-[2px] transform scale-105"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-slate-900/40"></div>
+                {/* Decorative Elements */}
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.5)]"></div>
+            </div>
             
-            <div className="relative z-10 w-full max-w-md p-8 rounded-2xl shadow-2xl bg-slate-900/90 border border-yellow-500/20 backdrop-blur-xl animate-in fade-in zoom-in duration-500">
-                <div className="text-center mb-8">
-                    <img src="https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/atomiclogo.webp" className="w-20 h-20 mx-auto mb-4 rounded-full border-2 border-yellow-500/30 shadow-lg object-contain bg-slate-950" />
-                    <h2 className="text-3xl font-bold text-white font-[Rajdhani]">ATOMIC ADMIN</h2>
-                </div>
-                <form onSubmit={submit} className="space-y-5">
-                    <div className="relative">
-                        <input type={showPass ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha Mestra" className={STYLES.input} />
-                        <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-3.5 text-slate-500 hover:text-white"><i className={`fa-solid ${showPass ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
+            <div className="relative z-10 w-full max-w-md p-1 m-4 rounded-2xl bg-gradient-to-b from-slate-700/50 to-slate-900/50 shadow-[0_0_60px_-15px_rgba(0,0,0,0.7)] backdrop-blur-xl border border-slate-700/50 animate-in fade-in zoom-in duration-500">
+                <div className="bg-slate-900/80 rounded-xl p-8 backdrop-blur-md relative overflow-hidden group">
+                     {/* Glow effect behind Logo */}
+                    <div className="absolute top-[-50px] left-1/2 -translate-x-1/2 w-40 h-40 bg-yellow-500/20 rounded-full blur-[50px] group-hover:bg-yellow-500/30 transition-all duration-700"></div>
+
+                    <div className="text-center mb-8 relative z-10">
+                        <div className="inline-block relative mb-4">
+                            <div className="absolute inset-0 bg-yellow-500 rounded-full blur-md opacity-20 animate-pulse"></div>
+                            <img src="https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/atomiclogo.webp" className="w-24 h-24 rounded-full border-2 border-yellow-500/30 shadow-xl object-contain bg-slate-950 relative z-10" />
+                        </div>
+                        <h2 className="text-4xl font-bold text-white font-[Rajdhani] tracking-wide mb-1">ATOMIC <span className="text-yellow-500">ADMIN</span></h2>
+                        <p className="text-slate-400 text-[10px] uppercase tracking-[0.3em] font-medium border-t border-slate-800 pt-3 mt-2 inline-block px-4">Painel de Controle</p>
                     </div>
-                    {error && <div className="text-red-400 text-sm text-center bg-red-500/10 py-2 rounded font-bold">{error}</div>}
-                    <button type="submit" disabled={loading} className={STYLES.btnPrimary + " w-full uppercase tracking-wide"}>
-                        {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : 'Acessar Painel'}
-                    </button>
-                </form>
+
+                    <form onSubmit={submit} className="space-y-5 relative z-10">
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase ml-1">Senha de Acesso</label>
+                            <div className="relative group/input">
+                                <input 
+                                    type={showPass ? "text" : "password"} 
+                                    value={password} 
+                                    onChange={(e) => setPassword(e.target.value)} 
+                                    className="w-full bg-slate-950/80 text-white border border-slate-700 rounded-xl p-4 pl-12 placeholder-slate-600 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition-all font-mono text-lg shadow-inner" 
+                                    placeholder="••••••••" 
+                                />
+                                <i className="fa-solid fa-lock absolute left-4 top-[1.1rem] text-slate-600 group-focus-within/input:text-yellow-500 transition-colors"></i>
+                                <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-[1.1rem] text-slate-600 hover:text-white transition-colors">
+                                    <i className={`fa-solid ${showPass ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        {error && (
+                            <div className="text-red-400 text-xs text-center bg-red-500/10 border border-red-500/20 py-2.5 rounded-lg font-bold flex items-center justify-center gap-2 animate-in slide-in-from-top-2">
+                                <i className="fa-solid fa-circle-exclamation"></i> {error}
+                            </div>
+                        )}
+
+                        <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-400 hover:to-orange-500 text-black font-bold rounded-xl shadow-[0_4px_20px_-5px_rgba(234,179,8,0.4)] hover:shadow-[0_8px_25px_-5px_rgba(234,179,8,0.5)] transition-all transform active:scale-95 px-6 py-4 uppercase tracking-widest text-sm flex items-center justify-center gap-2 mt-4 relative overflow-hidden group/btn">
+                            <span className="relative z-10 flex items-center gap-2">
+                                {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <><i className="fa-solid fa-right-to-bracket"></i> Acessar Painel</>}
+                            </span>
+                            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300"></div>
+                        </button>
+                    </form>
+
+                    <div className="mt-8 text-center">
+                        <p className="text-[10px] text-slate-600">Atomic Games © {new Date().getFullYear()} • Sistema Seguro</p>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -309,33 +354,46 @@ const DashboardHome = ({ token, products }: { token: string, products: Product[]
         return acc + val;
     }, 0);
 
-    const chartData = [45, 52, 38, 65, 72, 85, stats?.today_visits || 0];
+    const conversionRate = stats?.today_visits ? ((stats.today_carts / stats.today_visits) * 100).toFixed(1) : 0;
 
     return (
         <div className="space-y-6 fade-in max-w-7xl mx-auto">
             <header className="flex justify-between items-end mb-8">
-                <div><h2 className="text-4xl font-bold font-[Rajdhani] mb-2">Visão Geral</h2><p className="text-slate-400">Monitoramento em tempo real.</p></div>
+                <div><h2 className="text-4xl font-bold font-[Rajdhani] mb-2">Visão Geral</h2><p className="text-slate-400">Monitoramento em tempo real do Site Oficial.</p></div>
                 <div className={`px-3 py-1 text-xs font-bold rounded-full border flex items-center gap-2 animate-pulse ${isOnline ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
-                    <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-red-500'}`}></div> {isOnline ? 'Servidor Online' : 'Desconectado'}
+                    <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-red-500'}`}></div> {isOnline ? 'Conectado ao Backend' : 'Reconectando...'}
                 </div>
             </header>
             
+            {/* ROW 1: KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                 <StatCard icon="fa-wallet" label="Estoque Estimado" value={totalStock.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} color="emerald" />
-                <StatCard icon="fa-box" label="Produtos Ativos" value={products.length} color="yellow" />
-                <StatCard icon="fa-users" label="Visitas Totais" value={stats?.total_visits || 0} color="blue" />
-                <StatCard icon="fa-calendar-day" label="Visitas Hoje" value={stats?.today_visits || 0} color="purple" />
+                <StatCard icon="fa-box" label="Produtos Ativos" value={products.length} color="blue" />
+                <StatCard icon="fa-users" label="Visitas Hoje" value={stats?.today_visits || 0} color="purple" />
+                <StatCard icon="fa-cart-shopping" label="Carrinhos (Hoje)" value={stats?.today_carts || 0} color="yellow" />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                <div className="bg-slate-800/50 border border-slate-700/50 p-6 rounded-2xl">
-                    <h3 className="text-lg font-bold mb-4 font-[Rajdhani]"><i className="fa-solid fa-chart-line text-blue-500 mr-2"></i> Acessos Recentes</h3>
-                    <div className="h-48 flex items-end gap-2 px-2">
-                        {chartData.map((v, i) => (
-                            <div key={i} className="flex-1 bg-blue-500/20 hover:bg-blue-500/40 transition-all rounded-t relative group" style={{ height: `${(v / 100) * 100}%` }}>
-                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-xs py-1 px-2 rounded border border-slate-700 opacity-0 group-hover:opacity-100 transition">{v}</div>
-                            </div>
-                        ))}
+            {/* ROW 2: Conversion & Funnel */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+                <div className="lg:col-span-2 bg-slate-800/50 border border-slate-700/50 p-6 rounded-2xl">
+                    <h3 className="text-lg font-bold mb-6 font-[Rajdhani]"><i className="fa-solid fa-filter text-indigo-500 mr-2"></i> Funil de Vendas (Hoje)</h3>
+                    <div className="space-y-4">
+                        <FunnelBar label="Visitas Totais" value={stats?.today_visits || 0} max={stats?.today_visits || 1} color="bg-purple-500" icon="fa-eye" />
+                        <FunnelBar label="Adicionou ao Carrinho" value={stats?.today_carts || 0} max={stats?.today_visits || 1} color="bg-yellow-500" icon="fa-cart-plus" />
+                        <FunnelBar label="Clicou no WhatsApp" value={stats?.today_whatsapp || 0} max={stats?.today_visits || 1} color="bg-emerald-500" icon="fa-whatsapp" />
+                    </div>
+                </div>
+
+                <div className="bg-slate-800/50 border border-slate-700/50 p-6 rounded-2xl flex flex-col justify-center items-center relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent"></div>
+                    <h3 className="text-lg font-bold mb-2 font-[Rajdhani] self-start z-10"><i className="fa-solid fa-percent text-orange-500 mr-2"></i> Taxa de Conversão</h3>
+                    <p className="text-xs text-slate-400 self-start mb-4 z-10">Visitantes que colocaram itens no carrinho.</p>
+                    <div className="relative w-40 h-40 flex items-center justify-center mt-2 z-10">
+                        <div className="absolute inset-0 border-8 border-slate-700 rounded-full"></div>
+                        <div className="absolute inset-0 border-8 border-orange-500 rounded-full" style={{ clipPath: `polygon(0 0, 100% 0, 100% ${Math.min(100, parseFloat(String(conversionRate)))}%, 0 ${Math.min(100, parseFloat(String(conversionRate)))}%)`, opacity: 0.8 }}></div>
+                        <div className="text-center">
+                            <span className="text-4xl font-bold text-white tracking-tighter">{conversionRate}%</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -347,9 +405,26 @@ const StatCard = ({ icon, label, value, color }: any) => (
     <div className={`p-6 rounded-2xl border-l-4 border-${color}-500 bg-slate-800/50 relative overflow-hidden group hover:bg-slate-800 transition`}>
         <div className="absolute right-[-10px] top-[-10px] opacity-[0.05] group-hover:opacity-[0.1] transition-all transform group-hover:scale-110 duration-500"><i className={`fa-solid ${icon} text-9xl text-white`}></i></div>
         <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{label}</p>
-        <h3 className="text-3xl font-bold mt-2">{value}</h3>
+        <h3 className="text-3xl font-bold mt-2 font-mono">{value}</h3>
     </div>
 );
+
+const FunnelBar = ({ label, value, max, color, icon }: any) => {
+    const percent = max > 0 ? Math.min(100, (value / max) * 100) : 0;
+    return (
+        <div className="relative">
+            <div className="flex justify-between text-sm mb-2 items-center">
+                <span className="text-slate-300 font-medium flex items-center gap-2"><i className={`fa-solid ${icon} w-4 text-center opacity-70`}></i> {label}</span>
+                <span className="font-bold text-white font-mono">{value} <span className="text-slate-500 text-xs font-normal ml-1">({percent.toFixed(1)}%)</span></span>
+            </div>
+            <div className="w-full h-4 bg-slate-900/80 rounded-full overflow-hidden border border-slate-700/50">
+                <div className={`h-full ${color} transition-all duration-1000 relative`} style={{ width: `${percent}%` }}>
+                     <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 const OrdersManager = ({ token, toast }: any) => {
     const [orders, setOrders] = useState<Order[]>([]);
@@ -597,9 +672,33 @@ const SettingsManager = ({ token, toast }: any) => {
         try { await api.saveConfig(token, config); toast('success', 'Configurações salvas'); } catch(e) { toast('error', 'Erro ao salvar'); }
     };
 
+    const SnippetBox = ({ title, code }: any) => {
+        const copy = () => { navigator.clipboard.writeText(code); toast('info', 'Código copiado!'); };
+        return (
+            <div className="bg-slate-900 rounded-lg border border-slate-700 overflow-hidden text-xs font-mono mb-4">
+                <div className="flex justify-between items-center bg-slate-800 px-3 py-2 border-b border-slate-700">
+                    <span className="text-slate-400 font-bold uppercase">{title}</span>
+                    <button onClick={copy} className="text-blue-400 hover:text-white"><i className="fa-regular fa-copy"></i> Copiar</button>
+                </div>
+                <div className="p-3 text-slate-300 whitespace-pre overflow-x-auto">{code}</div>
+            </div>
+        );
+    };
+
     return (
         <div className="max-w-5xl mx-auto space-y-8 pb-10">
             <h2 className="text-3xl font-bold font-[Rajdhani] border-b border-slate-700/50 pb-4">Configurações do Site</h2>
+            
+            {/* Integration Section - NEW */}
+            <div className="bg-slate-800/40 p-8 rounded-2xl border border-slate-700 shadow-xl space-y-6">
+                <h3 className="font-bold text-xl text-blue-400 flex items-center gap-3 border-b border-slate-700/50 pb-4">
+                    <i className="fa-solid fa-code"></i> Integração de Métricas (API)
+                </h3>
+                <p className="text-sm text-slate-400">Abaixo estão os endpoints que conectam o site ao painel para alimentar os gráficos.</p>
+                
+                <SnippetBox title="Endpoint de Rastreamento (Visita/Carrinho/WhatsApp)" code={`// POST para ${API_BASE_URL}/public/visit\n// Payload: { "type": "visit" | "add_to_cart" | "whatsapp" }`} />
+            </div>
+
             <form onSubmit={save} className="grid md:grid-cols-2 gap-8">
                 {/* Contato Card */}
                 <div className="bg-slate-800/40 p-8 rounded-2xl border border-slate-700 shadow-xl space-y-6">
@@ -644,6 +743,7 @@ const SettingsManager = ({ token, toast }: any) => {
                     </div>
                 </div>
 
+                {/* Submit Button */}
                 <div className="md:col-span-2 flex justify-end pt-4">
                     <button type="submit" className={STYLES.btnPrimary + " px-10 py-4 text-lg shadow-2xl"}>
                         <i className="fa-solid fa-floppy-disk mr-2"></i> Salvar Alterações
