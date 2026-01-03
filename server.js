@@ -209,25 +209,54 @@ app.post('/api/public/order', async (req, res) => {
 // --- ROTAS API: ESTATÍSTICAS (ANALYTICS) ---
 app.get('/api/stats', authenticateToken, async (req, res) => {
     const data = await getFile(PATHS.stats);
-    res.json(data.content || { total_visits: 0, today_visits: 0 });
+    res.json(data.content || { 
+        total_visits: 0, today_visits: 0,
+        total_carts: 0, today_carts: 0,
+        total_whatsapp: 0, today_whatsapp: 0,
+        last_updated: new Date().toISOString()
+    });
 });
 
 app.post('/api/public/visit', async (req, res) => {
     try {
+        // Tipos: 'visit', 'add_to_cart', 'whatsapp'
+        const { type } = req.body; 
         const current = await getFile(PATHS.stats);
-        let stats = current.content || { total_visits: 0, today_visits: 0, last_updated: new Date().toISOString() };
+        
+        let stats = current.content || { 
+            total_visits: 0, today_visits: 0, 
+            total_carts: 0, today_carts: 0,
+            total_whatsapp: 0, today_whatsapp: 0,
+            last_updated: new Date().toISOString() 
+        };
         
         const now = new Date();
         const last = new Date(stats.last_updated);
         
-        if (now.getDate() !== last.getDate()) stats.today_visits = 0;
+        // Reset counters if day changed
+        if (now.getDate() !== last.getDate() || now.getMonth() !== last.getMonth()) {
+            stats.today_visits = 0;
+            stats.today_carts = 0;
+            stats.today_whatsapp = 0;
+        }
         
-        stats.total_visits = (stats.total_visits || 0) + 1;
-        stats.today_visits = (stats.today_visits || 0) + 1;
         stats.last_updated = now.toISOString();
         
-        // Salva em background (Fire and Forget) para não travar o request do usuário
-        saveFile(PATHS.stats, stats, "AUTO: Visit +1", current.sha).catch(console.error);
+        // Atualiza o contador específico
+        if (!type || type === 'visit') {
+            stats.total_visits = (stats.total_visits || 0) + 1;
+            stats.today_visits = (stats.today_visits || 0) + 1;
+        } else if (type === 'add_to_cart') {
+            stats.total_carts = (stats.total_carts || 0) + 1;
+            stats.today_carts = (stats.today_carts || 0) + 1;
+        } else if (type === 'whatsapp') {
+            stats.total_whatsapp = (stats.total_whatsapp || 0) + 1;
+            stats.today_whatsapp = (stats.today_whatsapp || 0) + 1;
+        }
+        
+        // Salva em background (Fire and Forget)
+        const msg = type ? `AUTO: ${type} +1` : "AUTO: Visit +1";
+        saveFile(PATHS.stats, stats, msg, current.sha).catch(console.error);
         
         res.json({ success: true });
     } catch (e) { res.json({ success: false }); }
