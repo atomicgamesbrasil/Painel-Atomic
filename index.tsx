@@ -14,21 +14,26 @@ const formatCurrencyInput = (value: string): string => {
     });
 };
 
-// --- API SERVICE LAYER (Separating logic from UI) ---
+// --- API SERVICE LAYER ---
 const api = {
     async request(endpoint: string, method: string = 'GET', body?: any, token?: string) {
         const headers: any = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
         
-        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-            method,
-            headers,
-            body: body ? JSON.stringify(body) : undefined
-        });
+        try {
+            const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+                method,
+                headers,
+                body: body ? JSON.stringify(body) : undefined
+            });
 
-        if (res.status === 401 || res.status === 403) throw new Error("UNAUTHORIZED");
-        if (!res.ok) throw new Error("API_ERROR");
-        return res.json();
+            if (res.status === 401 || res.status === 403) throw new Error("UNAUTHORIZED");
+            if (!res.ok) throw new Error("API_ERROR");
+            return res.json();
+        } catch (error) {
+            console.error(`API Fail [${endpoint}]:`, error);
+            throw error;
+        }
     },
 
     login: (password: string) => api.request('/auth/login', 'POST', { password }),
@@ -228,11 +233,14 @@ const NavButton = ({ icon, label, active, onClick }: any) => (
 
 const DashboardHome = ({ token, products }: { token: string, products: Product[] }) => {
     const [stats, setStats] = useState<Stats | null>(null);
+    const [isOnline, setIsOnline] = useState(false);
 
     useEffect(() => {
-        const load = () => api.getStats(token).then(setStats).catch(() => {});
+        const load = () => api.getStats(token)
+            .then(data => { setStats(data); setIsOnline(true); })
+            .catch(() => setIsOnline(false));
         load();
-        const interval = setInterval(load, 30000); // Live update
+        const interval = setInterval(load, 30000);
         return () => clearInterval(interval);
     }, [token]);
 
@@ -247,7 +255,9 @@ const DashboardHome = ({ token, products }: { token: string, products: Product[]
         <div className="space-y-6 fade-in max-w-7xl mx-auto">
             <header className="flex justify-between items-end mb-8">
                 <div><h2 className="text-4xl font-bold font-[Rajdhani] mb-2">Visão Geral</h2><p className="text-slate-400">Monitoramento em tempo real.</p></div>
-                <div className="px-3 py-1 bg-emerald-500/10 text-emerald-500 text-xs font-bold rounded-full border border-emerald-500/20 animate-pulse flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> Sistema Online</div>
+                <div className={`px-3 py-1 text-xs font-bold rounded-full border flex items-center gap-2 animate-pulse ${isOnline ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
+                    <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-red-500'}`}></div> {isOnline ? 'Servidor Online' : 'Desconectado'}
+                </div>
             </header>
             
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -572,7 +582,7 @@ const ModalBase = ({ title, onClose, children }: any) => createPortal(
 const GlobalStyles = () => (
     <style>{`
         .input { @apply w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-white focus:border-yellow-500 outline-none transition-colors; }
-        .label { @apply text-xs font-bold text-slate-400 uppercase mb-1 block; }
+        .label { @apply text-xs font-bold text-slate-400 uppercase mb-2 block; } /* Increased margin bottom */
         .btn-primary { @apply bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold rounded-lg shadow-lg hover:shadow-orange-500/20 transition-all transform active:scale-95 px-4 py-2; }
         .btn-secondary { @apply px-4 py-2 text-slate-400 hover:text-white transition-colors; }
     `}</style>
