@@ -3,16 +3,18 @@ import { createRoot } from 'react-dom/client';
 import { createPortal } from 'react-dom';
 
 // --- CONFIGURATION ---
-// FIX: Caminho relativo conecta automaticamente ao server.js (mesma origem)
 const API_BASE_URL = "/api";
 
-// Verifica se estamos na rota do admin
-const isAdminRoute = window.location.pathname.includes('/admin') || window.location.hash.includes('#admin');
+// FIX: Lógica aprimorada para detectar ambiente Admin
+// Se o domínio tiver 'painel' OU 'admin', ou se a URL tiver /admin ou #admin
+const isPanelDomain = window.location.hostname.includes('painel') || window.location.hostname.includes('admin');
+const isAdminRoute = isPanelDomain || window.location.pathname.includes('/admin') || window.location.hash.includes('#admin');
 
 if (isAdminRoute) {
-    // Remove o conteúdo do site da loja para renderizar o painel limpo
+    // Remove o conteúdo do site da loja IMEDIATAMENTE para renderizar o painel limpo
     const storeEl = document.getElementById('store-content');
     if (storeEl) storeEl.style.display = 'none';
+    document.documentElement.classList.add('admin-mode'); // Auxiliar para CSS
     document.body.style.overflow = 'hidden'; // Evita scroll do site
 }
 
@@ -70,7 +72,7 @@ const api = {
 };
 
 // --- TYPES ---
-interface Product { id: string; name: string; price: string; category: string; desc: string; image: string; }
+interface Product { id: string; name: string; price: string; category: string; desc: string; image: string; file?: any; }
 interface Banner { id: string; image: string; link: string; }
 interface Order { id: string; customer: string; total: string; status: string; date: string; items: string; }
 interface SiteConfig { whatsapp: string; instagram: string; maintenance: boolean; announcement: string; ga_id: string; }
@@ -121,21 +123,21 @@ const LoginScreen = ({ onLogin }: any) => {
         try {
             const data = await api.login(pass);
             if (data.token) onLogin(data.token);
-            else setErr('Senha inválida');
-        } catch { setErr('Erro de conexão'); }
+            else setErr('Senha incorreta');
+        } catch { setErr('Erro de conexão ou servidor'); }
         setLoad(false);
     };
 
     return (
         <div className="h-screen w-full flex items-center justify-center bg-slate-900 bg-[url('https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/img2.jpeg')] bg-cover bg-center bg-no-repeat bg-blend-overlay">
-            <form onSubmit={submit} className="bg-slate-950/90 p-8 rounded-2xl border border-yellow-500/20 w-full max-w-sm backdrop-blur shadow-2xl">
+            <form onSubmit={submit} className="bg-slate-950/90 p-8 rounded-2xl border border-yellow-500/20 w-full max-w-sm backdrop-blur shadow-2xl animate-in zoom-in-95 duration-300">
                 <div className="text-center mb-6">
-                    <img src="https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/atomiclogo.webp" className="w-16 h-16 mx-auto mb-3 rounded-full shadow-lg" />
+                    <img src="https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/atomiclogo.webp" className="w-16 h-16 mx-auto mb-3 rounded-full shadow-lg border border-slate-700" />
                     <h2 className="text-2xl font-bold font-[Rajdhani] text-white">ATOMIC ADMIN</h2>
                 </div>
-                <input type="password" value={pass} onChange={e => setPass(e.target.value)} className={STYLES.input + " mb-4"} placeholder="Senha Mestra" autoFocus />
-                {err && <p className="text-red-400 text-xs text-center mb-4 font-bold">{err}</p>}
-                <button disabled={load} className={STYLES.btnPrimary + " w-full"}>{load ? '...' : 'ENTRAR'}</button>
+                <input type="password" value={pass} onChange={e => setPass(e.target.value)} className={STYLES.input + " mb-4 text-center tracking-widest"} placeholder="SENHA MESTRA" autoFocus />
+                {err && <p className="text-red-400 text-xs text-center mb-4 font-bold bg-red-900/20 py-2 rounded">{err}</p>}
+                <button disabled={load} className={STYLES.btnPrimary + " w-full"}>{load ? <i className="fa-solid fa-spinner fa-spin"></i> : 'ENTRAR'}</button>
             </form>
         </div>
     );
@@ -155,13 +157,13 @@ const DashboardLayout = ({ token, onLogout }: any) => {
         <div className="min-h-screen bg-slate-900 text-slate-100 flex font-[Inter]">
             <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
                 {toasts.map(t => (
-                    <div key={t.id} className={`pointer-events-auto p-4 rounded-lg shadow-xl border-l-4 bg-slate-800 text-white ${t.type === 'success' ? 'border-emerald-500' : 'border-red-500'}`}>
+                    <div key={t.id} className={`pointer-events-auto p-4 rounded-lg shadow-xl border-l-4 bg-slate-800 text-white animate-in slide-in-from-right ${t.type === 'success' ? 'border-emerald-500' : 'border-red-500'}`}>
                         <span className="text-sm font-bold">{t.text}</span>
                     </div>
                 ))}
             </div>
 
-            <aside className="w-64 bg-slate-950 border-r border-slate-800 flex flex-col fixed inset-y-0">
+            <aside className="w-64 bg-slate-950 border-r border-slate-800 flex flex-col fixed inset-y-0 z-50">
                 <div className="p-6 flex items-center gap-3">
                     <img src="https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/atomiclogo.webp" className="w-8 h-8 rounded-full" />
                     <span className="font-bold font-[Rajdhani] text-lg">PAINEL</span>
@@ -202,7 +204,7 @@ const DashboardHome = ({ token }: any) => {
     useEffect(() => { api.getStats(token).then(setStats).catch(() => {}); }, [token]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in">
             <h2 className="text-3xl font-bold font-[Rajdhani]">Dashboard</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-slate-800 p-6 rounded-xl border-l-4 border-blue-500">
@@ -238,7 +240,7 @@ const OrdersManager = ({ token, toast }: any) => {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in">
             <div className="flex justify-between items-center">
                 <h2 className="text-3xl font-bold font-[Rajdhani]">Pedidos</h2>
                 <button onClick={load} className="p-2 text-slate-400 hover:text-white"><i className="fa-solid fa-sync"></i></button>
@@ -260,7 +262,7 @@ const OrdersManager = ({ token, toast }: any) => {
                                 <td className="p-4 text-slate-500 text-xs">{o.date}</td>
                             </tr>
                         ))}
-                        {orders.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-slate-500">Nenhum pedido encontrado.</td></tr>}
+                        {orders.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-slate-500">{loading ? 'Carregando...' : 'Nenhum pedido encontrado.'}</td></tr>}
                     </tbody>
                 </table>
             </div>
@@ -301,7 +303,7 @@ const ProductsManager = ({ token, toast }: any) => {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in">
             <div className="flex justify-between items-center">
                 <h2 className="text-3xl font-bold font-[Rajdhani]">Produtos</h2>
                 <button onClick={() => setEdit({ category: 'games' })} className={STYLES.btnPrimary}><i className="fa-solid fa-plus"></i> Novo</button>
@@ -325,7 +327,7 @@ const ProductsManager = ({ token, toast }: any) => {
 
             {edit && createPortal(
                 <div className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4">
-                    <div className="bg-slate-900 w-full max-w-lg rounded-2xl border border-slate-700 p-6">
+                    <div className="bg-slate-900 w-full max-w-lg rounded-2xl border border-slate-700 p-6 animate-in zoom-in-95">
                         <h3 className="text-xl font-bold mb-4">{edit.id ? 'Editar' : 'Novo'} Produto</h3>
                         <form onSubmit={save} className="space-y-4">
                             <input value={edit.name || ''} onChange={e => setEdit({...edit, name: e.target.value})} placeholder="Nome" className={STYLES.input} required />
@@ -375,7 +377,7 @@ const BannersManager = ({ token, toast }: any) => {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in">
             <h2 className="text-3xl font-bold font-[Rajdhani]">Banners</h2>
             <div className="grid md:grid-cols-2 gap-6">
                 {[0, 1].map(i => {
@@ -400,7 +402,7 @@ const ConfigManager = ({ token, toast }: any) => {
         try { await api.saveConfig(token, cfg); toast('success', 'Config salva'); } catch { toast('error', 'Erro'); }
     };
     return (
-        <form onSubmit={save} className="max-w-2xl space-y-6">
+        <form onSubmit={save} className="max-w-2xl space-y-6 animate-in fade-in">
             <h2 className="text-3xl font-bold font-[Rajdhani]">Configurações</h2>
             <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-4">
                 <div><label className={STYLES.label}>WhatsApp (somente números)</label><input value={cfg.whatsapp || ''} onChange={e => setCfg({...cfg, whatsapp: e.target.value})} className={STYLES.input} /></div>
