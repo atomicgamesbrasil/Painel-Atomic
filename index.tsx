@@ -14,6 +14,16 @@ const formatCurrencyInput = (value: string): string => {
     });
 };
 
+// --- STYLES CONSTANTS (Replaces GlobalStyles for Reliability) ---
+const STYLES = {
+    input: "w-full bg-slate-950 border border-slate-700 rounded-xl p-3.5 text-white placeholder-slate-500 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition-all shadow-inner font-medium",
+    label: "text-xs font-bold text-slate-400 uppercase mb-2 block tracking-wider",
+    btnPrimary: "bg-gradient-to-r from-yellow-500 to-orange-600 text-black font-bold rounded-xl shadow-lg hover:shadow-orange-500/20 transition-all transform active:scale-95 px-6 py-3 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2",
+    btnSecondary: "px-6 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors font-medium border border-transparent hover:border-slate-700",
+    modalOverlay: "fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-opacity",
+    modalContent: "relative bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 overflow-hidden"
+};
+
 // --- API SERVICE LAYER ---
 const api = {
     async request(endpoint: string, method: string = 'GET', body?: any, token?: string) {
@@ -65,7 +75,8 @@ const FileUploader = ({ label, currentImage, onFileSelect }: { label: string, cu
     const [preview, setPreview] = useState(currentImage || '');
     const inputRef = useRef<HTMLInputElement>(null);
 
-    useEffect(() => { if (currentImage) setPreview(currentImage); }, [currentImage]);
+    // Sync preview when prop changes (crucial for editing mode)
+    useEffect(() => { setPreview(currentImage || ''); }, [currentImage]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -78,28 +89,30 @@ const FileUploader = ({ label, currentImage, onFileSelect }: { label: string, cu
 
     return (
         <div className="space-y-2">
-            <span className="label">{label}</span>
+            <span className={STYLES.label}>{label}</span>
             <div 
                 onClick={() => inputRef.current?.click()}
-                className="group relative h-48 w-full border-2 border-dashed border-slate-700 hover:border-yellow-500 bg-slate-950 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden shadow-inner"
+                className="group relative h-56 w-full border-2 border-dashed border-slate-700 hover:border-yellow-500 bg-slate-950 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden shadow-inner"
             >
                 {preview ? (
                    <>
-                       <div className="absolute inset-0 z-0">
-                           <img src={preview} className="w-full h-full object-cover opacity-50 blur-[2px] scale-110" />
-                           <div className="absolute inset-0 bg-black/60"></div>
+                       <div className="absolute inset-0 z-0 bg-slate-900">
+                           <img src={preview} className="w-full h-full object-cover opacity-30 blur-sm scale-110" />
                        </div>
-                       <img src={preview} className="relative z-10 h-36 w-auto object-contain rounded-lg shadow-lg group-hover:scale-105 transition-transform duration-300" />
-                       <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <span className="bg-yellow-500 text-black px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wide shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-all">
-                                <i className="fa-solid fa-rotate mr-2"></i> Alterar Imagem
+                       <img src={preview} className="relative z-10 h-40 w-auto object-contain rounded-lg shadow-2xl group-hover:scale-105 transition-transform duration-300" />
+                       <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-[2px]">
+                            <span className="bg-yellow-500 text-black px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wide shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-all flex items-center gap-2">
+                                <i className="fa-solid fa-camera"></i> Trocar Imagem
                             </span>
                        </div>
                    </>
                 ) : (
                     <div className="relative z-10 flex flex-col items-center text-slate-500 group-hover:text-yellow-500 transition-colors">
-                        <i className="fa-solid fa-cloud-arrow-up text-4xl mb-3"></i>
+                        <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <i className="fa-solid fa-cloud-arrow-up text-3xl"></i>
+                        </div>
                         <span className="text-xs font-bold uppercase tracking-wider">Clique para enviar imagem</span>
+                        <span className="text-[10px] text-slate-600 mt-1">JPG, PNG ou WEBP</span>
                     </div>
                 )}
                 <input ref={inputRef} type="file" accept="image/*" onChange={handleChange} className="hidden" />
@@ -169,11 +182,11 @@ const LoginScreen = ({ onLogin }: { onLogin: (t: string) => void }) => {
                 </div>
                 <form onSubmit={submit} className="space-y-5">
                     <div className="relative">
-                        <input type={showPass ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha Mestra" className="input" />
+                        <input type={showPass ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha Mestra" className={STYLES.input} />
                         <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-3.5 text-slate-500 hover:text-white"><i className={`fa-solid ${showPass ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
                     </div>
                     {error && <div className="text-red-400 text-sm text-center bg-red-500/10 py-2 rounded font-bold">{error}</div>}
-                    <button type="submit" disabled={loading} className="w-full py-3.5 bg-gradient-to-r from-yellow-500 to-orange-600 text-black font-bold rounded-lg shadow-lg hover:shadow-orange-500/20 transition-all uppercase tracking-wide">
+                    <button type="submit" disabled={loading} className={STYLES.btnPrimary + " w-full uppercase tracking-wide"}>
                         {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : 'Acessar Painel'}
                     </button>
                 </form>
@@ -405,13 +418,13 @@ const CreateOrderModal = ({ onClose, onSave }: any) => {
     return (
         <ModalBase title="Novo Pedido Manual" onClose={onClose}>
             <form onSubmit={(e) => { e.preventDefault(); onSave(form); }} className="space-y-4">
-                <div><label className="label">Cliente</label><input required className="input" value={form.customer} onChange={e => setForm({...form, customer: e.target.value})} /></div>
-                <div><label className="label">Itens</label><textarea required className="input" value={form.items} onChange={e => setForm({...form, items: e.target.value})} /></div>
+                <div><label className={STYLES.label}>Cliente</label><input required className={STYLES.input} value={form.customer} onChange={e => setForm({...form, customer: e.target.value})} /></div>
+                <div><label className={STYLES.label}>Itens</label><textarea required className={STYLES.input} value={form.items} onChange={e => setForm({...form, items: e.target.value})} /></div>
                 <div className="grid grid-cols-2 gap-4">
-                    <div><label className="label">Total</label><input required className="input" value={form.total} onChange={e => setForm({...form, total: formatCurrencyInput(e.target.value)})} placeholder="R$ 0,00" /></div>
-                    <div><label className="label">Status</label><select className="input" value={form.status} onChange={e => setForm({...form, status: e.target.value})}><option value="approved">Aprovado</option><option value="pending">Pendente</option></select></div>
+                    <div><label className={STYLES.label}>Total</label><input required className={STYLES.input} value={form.total} onChange={e => setForm({...form, total: formatCurrencyInput(e.target.value)})} placeholder="R$ 0,00" /></div>
+                    <div><label className={STYLES.label}>Status</label><select className={STYLES.input} value={form.status} onChange={e => setForm({...form, status: e.target.value})}><option value="approved">Aprovado</option><option value="pending">Pendente</option></select></div>
                 </div>
-                <div className="flex justify-end gap-3 mt-6"><button type="button" onClick={onClose} className="btn-secondary">Cancelar</button><button type="submit" className="btn-primary">Criar</button></div>
+                <div className="flex justify-end gap-3 mt-6"><button type="button" onClick={onClose} className={STYLES.btnSecondary}>Cancelar</button><button type="submit" className={STYLES.btnPrimary}>Criar</button></div>
             </form>
         </ModalBase>
     );
@@ -427,7 +440,7 @@ const OrderDetailsModal = ({ order, onClose }: any) => (
             <div className="bg-slate-800 p-4 rounded-lg border border-slate-700"><p className="text-sm text-slate-400 mb-1">Itens</p><p className="whitespace-pre-wrap">{order.items}</p></div>
             <div className="flex justify-between items-center text-xl font-bold pt-2"><span>Total</span><span className="text-emerald-400">{order.total}</span></div>
         </div>
-        <div className="mt-6 flex justify-end gap-3 no-print"><button onClick={() => window.print()} className="btn-secondary"><i className="fa-solid fa-print mr-2"></i> Imprimir</button></div>
+        <div className="mt-6 flex justify-end gap-3 no-print"><button onClick={() => window.print()} className={STYLES.btnSecondary}><i className="fa-solid fa-print mr-2"></i> Imprimir</button></div>
     </ModalBase>
 );
 
@@ -462,13 +475,23 @@ const ProductsManager = ({ token, products, refresh, toast }: any) => {
         } catch (e) { toast('error', 'Erro ao salvar'); }
     };
 
+    const startEditing = (p: Product) => {
+        setEditing(p);
+        setIsCreating(false);
+    };
+
+    const startCreating = () => {
+        setEditing(null);
+        setIsCreating(true);
+    };
+
     const filtered = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
             <header className="flex justify-between items-center border-b border-slate-700/50 pb-4">
                 <h2 className="text-3xl font-bold font-[Rajdhani]">Produtos</h2>
-                <button onClick={() => setIsCreating(true)} className="btn-primary"><i className="fa-solid fa-plus mr-2"></i> Adicionar</button>
+                <button onClick={startCreating} className={STYLES.btnPrimary}><i className="fa-solid fa-plus"></i> Adicionar</button>
             </header>
             <div className="relative">
                 <i className="fa-solid fa-search absolute left-4 top-3.5 text-slate-500"></i>
@@ -484,7 +507,7 @@ const ProductsManager = ({ token, products, refresh, toast }: any) => {
                             <p className="text-emerald-400 font-mono font-bold mt-1">{p.price}</p>
                         </div>
                         <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => setEditing(p)} className="text-blue-400 hover:bg-slate-700 p-1.5 rounded"><i className="fa-solid fa-pen"></i></button>
+                            <button onClick={() => startEditing(p)} className="text-blue-400 hover:bg-slate-700 p-1.5 rounded"><i className="fa-solid fa-pen"></i></button>
                             <button onClick={() => handleDelete(p.id)} className="text-red-400 hover:bg-slate-700 p-1.5 rounded"><i className="fa-solid fa-trash"></i></button>
                         </div>
                     </div>
@@ -500,7 +523,7 @@ const ProductForm = ({ product, onClose, onSave }: any) => {
     const [file, setFile] = useState<File | null>(null);
     const [saving, setSaving] = useState(false);
 
-    // CRITICAL FIX: Update form state when product prop changes (for editing)
+    // FIX: Force reset state when product prop changes (handles switching between edit/create modes)
     useEffect(() => {
         if (product) {
             setForm(product);
@@ -521,18 +544,18 @@ const ProductForm = ({ product, onClose, onSave }: any) => {
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="md:col-span-2">
-                        <label className="label">Nome</label>
-                        <input required className="input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Ex: God of War Ragnarok" />
+                        <label className={STYLES.label}>Nome</label>
+                        <input required className={STYLES.input} value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Ex: God of War Ragnarok" />
                     </div>
                     
                     <div>
-                        <label className="label">Preço</label>
-                        <input required className="input" value={form.price} onChange={e => setForm({...form, price: formatCurrencyInput(e.target.value)})} placeholder="R$ 0,00" />
+                        <label className={STYLES.label}>Preço</label>
+                        <input required className={STYLES.input} value={form.price} onChange={e => setForm({...form, price: formatCurrencyInput(e.target.value)})} placeholder="R$ 0,00" />
                     </div>
                     
                     <div>
-                        <label className="label">Categoria</label>
-                        <select className="input" value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
+                        <label className={STYLES.label}>Categoria</label>
+                        <select className={STYLES.input} value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
                             <option value="games">Jogos</option>
                             <option value="console">Consoles</option>
                             <option value="acessorios">Acessórios</option>
@@ -545,14 +568,14 @@ const ProductForm = ({ product, onClose, onSave }: any) => {
                     </div>
 
                     <div className="md:col-span-2">
-                        <label className="label">Descrição</label>
-                        <textarea className="input h-32 font-mono text-sm resize-none" value={form.desc} onChange={e => setForm({...form, desc: e.target.value})} placeholder="Detalhes do produto..."></textarea>
+                        <label className={STYLES.label}>Descrição</label>
+                        <textarea className={STYLES.input + " h-32 font-mono text-sm resize-none"} value={form.desc} onChange={e => setForm({...form, desc: e.target.value})} placeholder="Detalhes do produto..."></textarea>
                     </div>
                 </div>
                 
                 <div className="flex justify-end gap-3 pt-6 border-t border-slate-700/50">
-                    <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
-                    <button type="submit" disabled={saving} className="btn-primary min-w-[120px]">
+                    <button type="button" onClick={onClose} className={STYLES.btnSecondary}>Cancelar</button>
+                    <button type="submit" disabled={saving} className={STYLES.btnPrimary + " min-w-[120px]"}>
                         {saving ? <i className="fa-solid fa-spinner fa-spin"></i> : 'Salvar'}
                     </button>
                 </div>
@@ -583,13 +606,13 @@ const SettingsManager = ({ token, toast }: any) => {
                     
                     <div className="space-y-4">
                         <div>
-                            <label className="label">WhatsApp (Somente números)</label>
-                            <input className="input" value={config.whatsapp} onChange={e => setConfig({...config, whatsapp: e.target.value})} placeholder="5521999999999" />
+                            <label className={STYLES.label}>WhatsApp (Somente números)</label>
+                            <input className={STYLES.input} value={config.whatsapp} onChange={e => setConfig({...config, whatsapp: e.target.value})} placeholder="5521999999999" />
                             <p className="text-[10px] text-slate-500 mt-1 ml-1">Inclua o código do país (55) e DDD.</p>
                         </div>
                         <div>
-                            <label className="label">Link do Instagram</label>
-                            <input className="input" value={config.instagram} onChange={e => setConfig({...config, instagram: e.target.value})} placeholder="https://instagram.com/..." />
+                            <label className={STYLES.label}>Link do Instagram</label>
+                            <input className={STYLES.input} value={config.instagram} onChange={e => setConfig({...config, instagram: e.target.value})} placeholder="https://instagram.com/..." />
                         </div>
                     </div>
                 </div>
@@ -612,14 +635,14 @@ const SettingsManager = ({ token, toast }: any) => {
                         </div>
                         
                         <div>
-                            <label className="label">Faixa de Aviso Global</label>
-                            <input className="input" value={config.announcement} onChange={e => setConfig({...config, announcement: e.target.value})} placeholder="Ex: Promoção de Carnaval! Aproveite." />
+                            <label className={STYLES.label}>Faixa de Aviso Global</label>
+                            <input className={STYLES.input} value={config.announcement} onChange={e => setConfig({...config, announcement: e.target.value})} placeholder="Ex: Promoção de Carnaval! Aproveite." />
                         </div>
                     </div>
                 </div>
 
                 <div className="md:col-span-2 flex justify-end pt-4">
-                    <button type="submit" className="btn-primary px-10 py-4 text-lg shadow-2xl">
+                    <button type="submit" className={STYLES.btnPrimary + " px-10 py-4 text-lg shadow-2xl"}>
                         <i className="fa-solid fa-floppy-disk mr-2"></i> Salvar Alterações
                     </button>
                 </div>
@@ -677,7 +700,7 @@ const BannersManager = ({ token, banners, refresh, toast }: any) => {
                 })}
             </div>
             <div className="flex justify-end pt-4">
-                <button onClick={handleSave} disabled={saving} className="btn-primary px-10 py-4 text-lg">
+                <button onClick={handleSave} disabled={saving} className={STYLES.btnPrimary + " px-10 py-4 text-lg"}>
                     {saving ? 'Enviando...' : 'Salvar Banners'}
                 </button>
             </div>
@@ -687,9 +710,8 @@ const BannersManager = ({ token, banners, refresh, toast }: any) => {
 
 // --- SHARED UI ---
 const ModalBase = ({ title, onClose, children }: any) => createPortal(
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-md transition-opacity" onClick={onClose}></div>
-        <div className="relative bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 overflow-hidden">
+    <div className={STYLES.modalOverlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
+        <div className={STYLES.modalContent}>
             <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
                 <h3 className="text-xl font-bold text-white font-[Rajdhani]">{title}</h3>
                 <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-slate-700 flex items-center justify-center transition-colors">
@@ -702,27 +724,8 @@ const ModalBase = ({ title, onClose, children }: any) => createPortal(
     document.body
 );
 
-// --- GLOBAL STYLES (Tailwind Utilities Injection) ---
-const GlobalStyles = () => (
-    <style>{`
-        /* FORCED DARK INPUT STYLES TO FIX WHITE BOX ISSUE */
-        .input { 
-            @apply w-full bg-slate-950 border border-slate-700 rounded-xl p-3.5 text-white placeholder-slate-600 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition-all shadow-inner;
-        }
-        .label { 
-            @apply text-xs font-bold text-slate-400 uppercase mb-2 block tracking-wider; 
-        }
-        .btn-primary { 
-            @apply bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold rounded-xl shadow-lg hover:shadow-orange-500/20 transition-all transform active:scale-95 px-5 py-2.5; 
-        }
-        .btn-secondary { 
-            @apply px-5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors font-medium; 
-        }
-    `}</style>
-);
-
 const rootElement = document.getElementById('root');
 if (rootElement) {
     const root = createRoot(rootElement);
-    root.render(<><GlobalStyles /><App /></>);
+    root.render(<App />);
 }
