@@ -65,7 +65,6 @@ const FileUploader = ({ label, currentImage, onFileSelect }: { label: string, cu
     const [preview, setPreview] = useState(currentImage || '');
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Update preview if currentImage prop changes
     useEffect(() => { if (currentImage) setPreview(currentImage); }, [currentImage]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,21 +81,27 @@ const FileUploader = ({ label, currentImage, onFileSelect }: { label: string, cu
             <span className="label">{label}</span>
             <div 
                 onClick={() => inputRef.current?.click()}
-                className="group relative h-40 w-full border-2 border-dashed border-slate-600 hover:border-yellow-500 bg-slate-950/50 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden"
+                className="group relative h-48 w-full border-2 border-dashed border-slate-700 hover:border-yellow-500 bg-slate-950 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden shadow-inner"
             >
                 {preview ? (
                    <>
-                       <img src={preview} className="absolute inset-0 w-full h-full object-contain opacity-60 group-hover:opacity-40 transition-opacity p-2" />
-                       <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-all" />
+                       <div className="absolute inset-0 z-0">
+                           <img src={preview} className="w-full h-full object-cover opacity-50 blur-[2px] scale-110" />
+                           <div className="absolute inset-0 bg-black/60"></div>
+                       </div>
+                       <img src={preview} className="relative z-10 h-36 w-auto object-contain rounded-lg shadow-lg group-hover:scale-105 transition-transform duration-300" />
+                       <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <span className="bg-yellow-500 text-black px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wide shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-all">
+                                <i className="fa-solid fa-rotate mr-2"></i> Alterar Imagem
+                            </span>
+                       </div>
                    </>
-                ) : null}
-                
-                <div className="relative z-10 flex flex-col items-center text-slate-400 group-hover:text-yellow-400 transition-colors drop-shadow-md">
-                    <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-xl">
-                        <i className={`fa-solid ${preview ? 'fa-rotate' : 'fa-cloud-arrow-up'} text-xl`}></i>
+                ) : (
+                    <div className="relative z-10 flex flex-col items-center text-slate-500 group-hover:text-yellow-500 transition-colors">
+                        <i className="fa-solid fa-cloud-arrow-up text-4xl mb-3"></i>
+                        <span className="text-xs font-bold uppercase tracking-wider">Clique para enviar imagem</span>
                     </div>
-                    <span className="text-xs font-bold uppercase tracking-wider">{preview ? 'Trocar Imagem' : 'Clique para enviar'}</span>
-                </div>
+                )}
                 <input ref={inputRef} type="file" accept="image/*" onChange={handleChange} className="hidden" />
             </div>
         </div>
@@ -164,7 +169,7 @@ const LoginScreen = ({ onLogin }: { onLogin: (t: string) => void }) => {
                 </div>
                 <form onSubmit={submit} className="space-y-5">
                     <div className="relative">
-                        <input type={showPass ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha Mestra" className="input bg-slate-950/50" />
+                        <input type={showPass ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha Mestra" className="input" />
                         <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-3.5 text-slate-500 hover:text-white"><i className={`fa-solid ${showPass ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
                     </div>
                     {error && <div className="text-red-400 text-sm text-center bg-red-500/10 py-2 rounded font-bold">{error}</div>}
@@ -495,6 +500,15 @@ const ProductForm = ({ product, onClose, onSave }: any) => {
     const [file, setFile] = useState<File | null>(null);
     const [saving, setSaving] = useState(false);
 
+    // CRITICAL FIX: Update form state when product prop changes (for editing)
+    useEffect(() => {
+        if (product) {
+            setForm(product);
+        } else {
+            setForm({ name: '', price: '', category: 'games', desc: '', image: '' });
+        }
+    }, [product]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
@@ -504,8 +518,8 @@ const ProductForm = ({ product, onClose, onSave }: any) => {
 
     return (
         <ModalBase title={product ? 'Editar Produto' : 'Novo Produto'} onClose={onClose}>
-            <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="md:col-span-2">
                         <label className="label">Nome</label>
                         <input required className="input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Ex: God of War Ragnarok" />
@@ -536,7 +550,7 @@ const ProductForm = ({ product, onClose, onSave }: any) => {
                     </div>
                 </div>
                 
-                <div className="flex justify-end gap-3 pt-4 border-t border-slate-700/50">
+                <div className="flex justify-end gap-3 pt-6 border-t border-slate-700/50">
                     <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
                     <button type="submit" disabled={saving} className="btn-primary min-w-[120px]">
                         {saving ? <i className="fa-solid fa-spinner fa-spin"></i> : 'Salvar'}
