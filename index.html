@@ -1,68 +1,149 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="light">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Atomic Games - Admin</title>
-  
-  <link rel="icon" type="image/webp" href="https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/atomiclogo.webp">
-  
-  <!-- ESTILOS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
-  
-  <style>
-    body { font-family: 'Inter', sans-serif; }
-    h1, h2, h3 { font-family: 'Rajdhani', sans-serif; }
-    .glass-panel {
-        background: rgba(15, 23, 42, 0.6);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-    }
-    .custom-scroll::-webkit-scrollbar { width: 8px; }
-    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-    .custom-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-    .fade-in { animation: fadeIn 0.4s ease-out; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    .animate-spin-slow { animation: spin-slow 10s linear infinite; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+    <title>Atomic Games e Informática</title>
     
-    /* Toast Animation */
-    .toast-enter { transform: translateX(100%); opacity: 0; }
-    .toast-enter-active { transform: translateX(0); opacity: 1; transition: all 300ms ease-out; }
-    .toast-exit { transform: translateX(0); opacity: 1; }
-    .toast-exit-active { transform: translateX(100%); opacity: 0; transition: all 300ms ease-in; }
+    <!-- PWA Manifest & Meta -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#FFD700">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/atomiclogo.webp">
+    
+    <!-- Script de Proteção Visual para Admin (Anti-Flash) -->
+    <script>
+        // Se for domínio do painel ou rota de admin, oculta o site imediatamente
+        if (window.location.hostname.includes('painel') || window.location.hostname.includes('admin') || window.location.pathname.includes('/admin') || window.location.hash.includes('#admin')) {
+            document.write('<style>#store-content { display: none !important; } #root { display: block !important; height: 100vh; overflow: hidden; background: #0f172a; }</style>');
+            document.documentElement.classList.add('admin-mode');
+        }
+    </script>
+    
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css">
 
-    /* Print Styles */
-    @media print {
-      body * { visibility: hidden; }
-      #print-area, #print-area * { visibility: visible; }
-      #print-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; background: white; color: black; }
-      .no-print { display: none; }
-    }
-  </style>
-
-  <!-- REACT & BABEL CONFIGURATION -->
-  <script type="importmap">
+    <!-- React Dependencies (ImportMap Fixed) -->
+    <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@18.2.0",
     "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
     "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
-<body class="bg-slate-900 text-white overflow-hidden">
-  <div id="root"></div>
-  
-  <!-- Carrega o código React -->
-  <script type="text/babel" data-type="module" data-presets="typescript,react" src="index.tsx"></script>
+<body class="antialiased bg-base text-base transition-colors duration-500" id="top">
+    
+    <!-- Admin Root (Painel Renderiza Aqui) -->
+    <div id="root"></div>
+
+    <!-- Store Content (Site Renderiza Aqui) -->
+    <div id="store-content">
+        <div class="mesh-gradient" aria-hidden="true"></div>
+        <div class="toast-container" id="toastContainer"></div>
+
+        <button id="backToTop" class="fixed bottom-6 left-6 w-14 h-14 rounded-2xl bg-gradient-to-br from-yellow-400 to-orange-500 text-black flex items-center justify-center shadow-2xl hover:scale-110 transition-transform glow-gold z-[9500]">
+            <i class="ph-bold ph-arrow-up text-xl"></i>
+        </button>
+
+        <!-- Chatbot -->
+        <div id="atomic-chat-widget">
+            <div id="chatBubble" class="chat-bubble"><img src="https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/thchatbot.jpg"></div>
+            <div id="chatWindow" class="chat-window">
+                <header class="chat-header">
+                    <div class="flex items-center gap-2"><div class="w-8 h-8 rounded-full overflow-hidden"><img src="https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/thchatbot.jpg"></div><div class="text-xs font-bold">Thiago - Atomic</div></div>
+                    <button id="closeChatBtn"><i class="ph-bold ph-x"></i></button>
+                </header>
+                <div id="chatMessages" class="chat-messages"></div>
+                <footer class="chat-input-area"><input id="chatInput" class="chat-input" placeholder="Digite sua dúvida..."><button id="sendBtn" class="chat-send-btn"><i class="ph-fill ph-paper-plane-right"></i></button></footer>
+            </div>
+        </div>
+
+        <!-- Navbar -->
+        <header class="sticky top-0 z-50 glass border-b border-base shadow-sm" id="navbar">
+            <nav class="container mx-auto px-4 h-20 flex justify-between items-center">
+                <a href="#top" class="flex items-center gap-3">
+                    <img src="https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/atomiclogo.webp" class="h-11 w-11 rounded-full shadow-lg bg-black ring-2 ring-yellow-400/50">
+                    <span class="font-bold font-[Space Grotesk] hidden sm:block">ATOMIC GAMES</span>
+                </a>
+                <div class="hidden md:flex gap-6 font-bold text-xs uppercase tracking-widest text-muted">
+                    <a href="#store" class="hover:text-[#FFD700]">Loja</a>
+                    <a href="#services" class="hover:text-[#FFD700]">Assistência</a>
+                    <a href="#location" class="hover:text-[#FFD700]">Local</a>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="themeToggle" class="p-2"><i class="ph ph-sun text-xl"></i></button>
+                    <button id="openCartBtn" class="relative p-2"><i class="ph-bold ph-shopping-cart text-xl"></i><span id="cartCount" class="badge hidden">0</span></button>
+                </div>
+            </nav>
+        </header>
+
+        <main id="main-content">
+            <!-- Hero -->
+            <section class="py-16 md:py-24 relative overflow-hidden">
+                <div class="container mx-auto px-4 flex flex-col md:flex-row items-center gap-12">
+                    <div class="md:w-1/2 space-y-6 text-center md:text-left reveal">
+                        <div class="inline-block px-4 py-1 rounded-full bg-yellow-400/20 text-yellow-600 dark:text-yellow-400 text-xs font-bold uppercase tracking-widest">Madureira - RJ</div>
+                        <h1 class="text-5xl md:text-7xl font-black leading-none">O QG do <span class="text-gradient">Gamer</span></h1>
+                        <p class="text-lg text-muted max-w-lg mx-auto md:mx-0">Assistência técnica especializada e a loja mais completa da região.</p>
+                        <div class="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
+                            <a href="#store" class="btn-primary">VER PRODUTOS</a>
+                            <a href="#services" class="btn-secondary">ASSISTÊNCIA</a>
+                        </div>
+                    </div>
+                    <div class="md:w-1/2 reveal">
+                        <div class="relative aspect-video rounded-3xl overflow-hidden shadow-2xl border-4 border-white/10 group cursor-pointer" id="videoFacade">
+                            <img src="https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/img%20site/painelv6.webp" class="w-full h-full object-cover opacity-80 group-hover:scale-105 transition duration-700">
+                            <div class="absolute inset-0 flex items-center justify-center"><div class="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition"><i class="ph-fill ph-play text-3xl text-black"></i></div></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Store -->
+            <section id="store" class="py-20 bg-base">
+                <div class="container mx-auto px-4">
+                    <div class="flex flex-col md:flex-row justify-between items-end mb-10 gap-6 reveal">
+                        <div><h2 class="text-4xl font-black mb-2">Catálogo <span class="text-gradient">Atomic</span></h2><p class="text-muted">Produtos selecionados.</p></div>
+                        <input id="searchInput" class="w-full md:w-80 bg-card border border-base rounded-xl px-4 py-3 outline-none focus:border-yellow-400" placeholder="Buscar...">
+                    </div>
+                    <div class="flex gap-4 overflow-x-auto pb-4 mb-8 snap-x" id="categoryFilters">
+                        <button class="filter-btn active px-6 py-3 rounded-xl bg-yellow-500 text-black font-bold text-sm whitespace-nowrap" data-category="all">Tudo</button>
+                        <button class="filter-btn px-6 py-3 rounded-xl border border-base font-bold text-sm whitespace-nowrap text-muted" data-category="console">Consoles</button>
+                        <button class="filter-btn px-6 py-3 rounded-xl border border-base font-bold text-sm whitespace-nowrap text-muted" data-category="games">Jogos</button>
+                        <button class="filter-btn px-6 py-3 rounded-xl border border-base font-bold text-sm whitespace-nowrap text-muted" data-category="acessorios">Acessórios</button>
+                    </div>
+                    <div id="productGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 reveal"></div>
+                </div>
+            </section>
+        </main>
+        
+        <!-- Footer -->
+        <footer class="py-12 border-t border-base text-center">
+            <p class="font-bold text-muted">&copy; 2025 Atomic Games. Madureira, RJ.</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="main.js" defer></script>
+    <script src="chatbot.js" defer></script>
+    <script type="text/babel" data-type="module" data-presets="typescript,react" src="index.tsx"></script>
 </body>
 </html>
