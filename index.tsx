@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createPortal } from 'react-dom';
 
@@ -59,9 +59,52 @@ interface SiteConfig { whatsapp: string; instagram: string; maintenance: boolean
 interface Stats { total_visits: number; today_visits: number; last_updated: string; }
 interface ToastMsg { id: number; type: 'success' | 'error' | 'info'; text: string; }
 
-// --- COMPONENTS ---
+// --- CUSTOM UI COMPONENTS ---
 
-// 1. App Entry Point
+const FileUploader = ({ label, currentImage, onFileSelect }: { label: string, currentImage?: string, onFileSelect: (f: File) => void }) => {
+    const [preview, setPreview] = useState(currentImage || '');
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    // Update preview if currentImage prop changes
+    useEffect(() => { if (currentImage) setPreview(currentImage); }, [currentImage]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const url = URL.createObjectURL(file);
+            setPreview(url);
+            onFileSelect(file);
+        }
+    };
+
+    return (
+        <div className="space-y-2">
+            <span className="label">{label}</span>
+            <div 
+                onClick={() => inputRef.current?.click()}
+                className="group relative h-40 w-full border-2 border-dashed border-slate-600 hover:border-yellow-500 bg-slate-950/50 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden"
+            >
+                {preview ? (
+                   <>
+                       <img src={preview} className="absolute inset-0 w-full h-full object-contain opacity-60 group-hover:opacity-40 transition-opacity p-2" />
+                       <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-all" />
+                   </>
+                ) : null}
+                
+                <div className="relative z-10 flex flex-col items-center text-slate-400 group-hover:text-yellow-400 transition-colors drop-shadow-md">
+                    <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-xl">
+                        <i className={`fa-solid ${preview ? 'fa-rotate' : 'fa-cloud-arrow-up'} text-xl`}></i>
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-wider">{preview ? 'Trocar Imagem' : 'Clique para enviar'}</span>
+                </div>
+                <input ref={inputRef} type="file" accept="image/*" onChange={handleChange} className="hidden" />
+            </div>
+        </div>
+    );
+};
+
+// --- APP & LAYOUT ---
+
 const App = () => {
     const [token, setToken] = useState<string | null>(localStorage.getItem('admin_token'));
     const [theme, setTheme] = useState(localStorage.getItem('atomic_theme') || 'dark');
@@ -88,7 +131,6 @@ const App = () => {
     return <DashboardLayout token={token} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />;
 };
 
-// 2. Login Screen
 const LoginScreen = ({ onLogin }: { onLogin: (t: string) => void }) => {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -122,7 +164,7 @@ const LoginScreen = ({ onLogin }: { onLogin: (t: string) => void }) => {
                 </div>
                 <form onSubmit={submit} className="space-y-5">
                     <div className="relative">
-                        <input type={showPass ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha Mestra" className="w-full bg-slate-950/50 border border-slate-700 rounded-lg py-3 pl-4 pr-10 text-white focus:border-yellow-500 outline-none transition-colors" />
+                        <input type={showPass ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha Mestra" className="input bg-slate-950/50" />
                         <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-3.5 text-slate-500 hover:text-white"><i className={`fa-solid ${showPass ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
                     </div>
                     {error && <div className="text-red-400 text-sm text-center bg-red-500/10 py-2 rounded font-bold">{error}</div>}
@@ -135,7 +177,6 @@ const LoginScreen = ({ onLogin }: { onLogin: (t: string) => void }) => {
     );
 };
 
-// 3. Main Dashboard Layout
 const DashboardLayout = ({ token, onLogout, theme, toggleTheme }: any) => {
     const [section, setSection] = useState('dashboard');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -174,7 +215,6 @@ const DashboardLayout = ({ token, onLogout, theme, toggleTheme }: any) => {
 
     return (
         <div style={bgStyle} className="h-screen flex flex-col text-slate-100 transition-all duration-500 relative font-[Inter]">
-            {/* Toast Overlay */}
             <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
                 {toasts.map(t => (
                     <div key={t.id} className={`pointer-events-auto min-w-[300px] p-4 rounded-lg shadow-2xl border-l-4 flex items-center gap-3 bg-slate-900 text-white animate-in slide-in-from-right ${t.type === 'success' ? 'border-emerald-500' : t.type === 'error' ? 'border-red-500' : 'border-blue-500'}`}>
@@ -184,7 +224,6 @@ const DashboardLayout = ({ token, onLogout, theme, toggleTheme }: any) => {
                 ))}
             </div>
 
-            {/* Navbar */}
             <nav className={`h-16 border-b border-slate-700 px-6 flex items-center justify-between shadow-lg z-20 ${theme === 'light' ? 'bg-slate-900/95' : 'bg-slate-900'}`}>
                 <div className="flex items-center gap-3">
                     <button className="md:hidden text-slate-300" onClick={() => setMobileMenuOpen(true)}><i className="fa-solid fa-bars text-xl"></i></button>
@@ -465,15 +504,44 @@ const ProductForm = ({ product, onClose, onSave }: any) => {
 
     return (
         <ModalBase title={product ? 'Editar Produto' : 'Novo Produto'} onClose={onClose}>
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2"><label className="label">Nome</label><input required className="input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
-                    <div><label className="label">Preço</label><input required className="input" value={form.price} onChange={e => setForm({...form, price: formatCurrencyInput(e.target.value)})} placeholder="R$ 0,00" /></div>
-                    <div><label className="label">Categoria</label><select className="input" value={form.category} onChange={e => setForm({...form, category: e.target.value})}><option value="games">Jogos</option><option value="console">Consoles</option><option value="acessorios">Acessórios</option><option value="hardware">Hardware</option></select></div>
-                    <div className="col-span-2"><label className="label">Imagem</label><input type="file" accept="image/*" onChange={e => setFile(e.target.files?.[0] || null)} className="text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-yellow-500 file:text-black hover:file:bg-yellow-400 cursor-pointer" /></div>
-                    <div className="col-span-2"><label className="label">Descrição</label><textarea className="input h-32 font-mono text-sm" value={form.desc} onChange={e => setForm({...form, desc: e.target.value})}></textarea></div>
+            <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="md:col-span-2">
+                        <label className="label">Nome</label>
+                        <input required className="input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Ex: God of War Ragnarok" />
+                    </div>
+                    
+                    <div>
+                        <label className="label">Preço</label>
+                        <input required className="input" value={form.price} onChange={e => setForm({...form, price: formatCurrencyInput(e.target.value)})} placeholder="R$ 0,00" />
+                    </div>
+                    
+                    <div>
+                        <label className="label">Categoria</label>
+                        <select className="input" value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
+                            <option value="games">Jogos</option>
+                            <option value="console">Consoles</option>
+                            <option value="acessorios">Acessórios</option>
+                            <option value="hardware">Hardware</option>
+                        </select>
+                    </div>
+
+                    <div className="md:col-span-2">
+                        <FileUploader label="Imagem do Produto" currentImage={form.image} onFileSelect={setFile} />
+                    </div>
+
+                    <div className="md:col-span-2">
+                        <label className="label">Descrição</label>
+                        <textarea className="input h-32 font-mono text-sm resize-none" value={form.desc} onChange={e => setForm({...form, desc: e.target.value})} placeholder="Detalhes do produto..."></textarea>
+                    </div>
                 </div>
-                <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={onClose} className="btn-secondary">Cancelar</button><button type="submit" disabled={saving} className="btn-primary">{saving ? 'Salvando...' : 'Salvar'}</button></div>
+                
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-700/50">
+                    <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
+                    <button type="submit" disabled={saving} className="btn-primary min-w-[120px]">
+                        {saving ? <i className="fa-solid fa-spinner fa-spin"></i> : 'Salvar'}
+                    </button>
+                </div>
             </form>
         </ModalBase>
     );
@@ -490,23 +558,57 @@ const SettingsManager = ({ token, toast }: any) => {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
-            <h2 className="text-3xl font-bold font-[Rajdhani] border-b border-slate-700/50 pb-4">Configurações</h2>
-            <form onSubmit={save} className="grid md:grid-cols-2 gap-6">
-                <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700 space-y-4">
-                    <h3 className="font-bold text-yellow-500"><i className="fa-solid fa-address-card mr-2"></i> Contato</h3>
-                    <div><label className="label">WhatsApp (Somente números)</label><input className="input" value={config.whatsapp} onChange={e => setConfig({...config, whatsapp: e.target.value})} /></div>
-                    <div><label className="label">Instagram Link</label><input className="input" value={config.instagram} onChange={e => setConfig({...config, instagram: e.target.value})} /></div>
-                </div>
-                <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700 space-y-4">
-                    <h3 className="font-bold text-red-500"><i className="fa-solid fa-triangle-exclamation mr-2"></i> Sistema</h3>
-                    <div className="flex items-center justify-between p-3 bg-slate-900 rounded-lg border border-slate-700">
-                        <span>Modo Manutenção</span>
-                        <input type="checkbox" checked={config.maintenance} onChange={e => setConfig({...config, maintenance: e.target.checked})} className="w-5 h-5 accent-red-500" />
+        <div className="max-w-5xl mx-auto space-y-8 pb-10">
+            <h2 className="text-3xl font-bold font-[Rajdhani] border-b border-slate-700/50 pb-4">Configurações do Site</h2>
+            <form onSubmit={save} className="grid md:grid-cols-2 gap-8">
+                {/* Contato Card */}
+                <div className="bg-slate-800/40 p-8 rounded-2xl border border-slate-700 shadow-xl space-y-6">
+                    <h3 className="font-bold text-xl text-yellow-500 flex items-center gap-3 border-b border-slate-700/50 pb-4">
+                        <i className="fa-solid fa-address-card"></i> Contato & Redes
+                    </h3>
+                    
+                    <div className="space-y-4">
+                        <div>
+                            <label className="label">WhatsApp (Somente números)</label>
+                            <input className="input" value={config.whatsapp} onChange={e => setConfig({...config, whatsapp: e.target.value})} placeholder="5521999999999" />
+                            <p className="text-[10px] text-slate-500 mt-1 ml-1">Inclua o código do país (55) e DDD.</p>
+                        </div>
+                        <div>
+                            <label className="label">Link do Instagram</label>
+                            <input className="input" value={config.instagram} onChange={e => setConfig({...config, instagram: e.target.value})} placeholder="https://instagram.com/..." />
+                        </div>
                     </div>
-                    <div><label className="label">Faixa de Aviso</label><input className="input" value={config.announcement} onChange={e => setConfig({...config, announcement: e.target.value})} /></div>
                 </div>
-                <div className="md:col-span-2 flex justify-end"><button type="submit" className="btn-primary px-8 py-3">Salvar Tudo</button></div>
+
+                {/* Sistema Card */}
+                <div className="bg-slate-800/40 p-8 rounded-2xl border border-slate-700 shadow-xl space-y-6">
+                    <h3 className="font-bold text-xl text-red-400 flex items-center gap-3 border-b border-slate-700/50 pb-4">
+                        <i className="fa-solid fa-gears"></i> Sistema
+                    </h3>
+                    
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between p-4 bg-slate-900/50 rounded-xl border border-slate-700 hover:border-slate-500 transition-colors cursor-pointer" onClick={() => setConfig({...config, maintenance: !config.maintenance})}>
+                            <div>
+                                <span className="font-bold block text-sm mb-1">Modo Manutenção</span>
+                                <span className="text-xs text-slate-400">Bloqueia o acesso público ao site.</span>
+                            </div>
+                            <div className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 ${config.maintenance ? 'bg-red-500' : 'bg-slate-700'}`}>
+                                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${config.maintenance ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label className="label">Faixa de Aviso Global</label>
+                            <input className="input" value={config.announcement} onChange={e => setConfig({...config, announcement: e.target.value})} placeholder="Ex: Promoção de Carnaval! Aproveite." />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="md:col-span-2 flex justify-end pt-4">
+                    <button type="submit" className="btn-primary px-10 py-4 text-lg shadow-2xl">
+                        <i className="fa-solid fa-floppy-disk mr-2"></i> Salvar Alterações
+                    </button>
+                </div>
             </form>
         </div>
     );
@@ -528,7 +630,7 @@ const BannersManager = ({ token, banners, refresh, toast }: any) => {
                     await new Promise(r => reader.onload = r);
                     const content = (reader.result as string).split(',')[1];
                     await api.upload(token, { filename: file.name, content, folder: 'banners' });
-                    // Update local reference logic here if needed, simplification for now
+                    
                     const idx = newBanners.findIndex(b => b.id === id);
                     if(idx !== -1) newBanners[idx].image = file.name;
                     else newBanners.push({ id, image: file.name, link: '#store' });
@@ -540,25 +642,31 @@ const BannersManager = ({ token, banners, refresh, toast }: any) => {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
-            <h2 className="text-3xl font-bold font-[Rajdhani] border-b border-slate-700/50 pb-4">Banners</h2>
-            <div className="grid md:grid-cols-2 gap-6">
+        <div className="max-w-5xl mx-auto space-y-8">
+            <h2 className="text-3xl font-bold font-[Rajdhani] border-b border-slate-700/50 pb-4">Gerenciar Banners</h2>
+            <div className="grid md:grid-cols-2 gap-8">
                 {[1, 2].map(id => {
                     const bid = `banner_${id}`;
                     const current = banners.find(b => b.id === bid)?.image;
                     const url = current ? `https://raw.githubusercontent.com/atomicgamesbrasil/siteoficial/main/BANNER%20SAZIONAL/${current}` : '';
+                    
                     return (
-                        <div key={id} className="bg-slate-800/50 p-6 rounded-xl border border-slate-700 text-center">
-                            <h3 className="font-bold mb-4">Banner {id}</h3>
-                            <div className="h-40 bg-slate-950 rounded-lg mb-4 flex items-center justify-center overflow-hidden border border-slate-800">
-                                {files[bid] ? <p className="text-yellow-500">{files[bid]?.name}</p> : url ? <img src={url} className="w-full h-full object-cover" /> : <p className="text-slate-500">Sem imagem</p>}
-                            </div>
-                            <input type="file" accept="image/*" onChange={e => setFiles({ ...files, [bid]: e.target.files?.[0] || null })} className="text-xs text-slate-400" />
+                        <div key={id} className="bg-slate-800/40 p-6 rounded-2xl border border-slate-700 space-y-4">
+                            <h3 className="font-bold text-lg">Banner Principal {id}</h3>
+                            <FileUploader 
+                                label="" 
+                                currentImage={files[bid] ? URL.createObjectURL(files[bid]!) : url} 
+                                onFileSelect={(f) => setFiles({ ...files, [bid]: f })} 
+                            />
                         </div>
                     );
                 })}
             </div>
-            <div className="flex justify-end"><button onClick={handleSave} disabled={saving} className="btn-primary px-8">{saving ? 'Enviando...' : 'Salvar Banners'}</button></div>
+            <div className="flex justify-end pt-4">
+                <button onClick={handleSave} disabled={saving} className="btn-primary px-10 py-4 text-lg">
+                    {saving ? 'Enviando...' : 'Salvar Banners'}
+                </button>
+            </div>
         </div>
     );
 };
@@ -566,13 +674,15 @@ const BannersManager = ({ token, banners, refresh, toast }: any) => {
 // --- SHARED UI ---
 const ModalBase = ({ title, onClose, children }: any) => createPortal(
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose}></div>
-        <div className="relative bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
-            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-800/50 rounded-t-2xl">
-                <h3 className="text-lg font-bold text-white">{title}</h3>
-                <button onClick={onClose}><i className="fa-solid fa-xmark text-xl text-slate-400 hover:text-white"></i></button>
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-md transition-opacity" onClick={onClose}></div>
+        <div className="relative bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 overflow-hidden">
+            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
+                <h3 className="text-xl font-bold text-white font-[Rajdhani]">{title}</h3>
+                <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-slate-700 flex items-center justify-center transition-colors">
+                    <i className="fa-solid fa-xmark text-lg text-slate-400 hover:text-white"></i>
+                </button>
             </div>
-            <div className="p-6 overflow-y-auto custom-scroll">{children}</div>
+            <div className="p-6 overflow-y-auto custom-scroll bg-slate-900">{children}</div>
         </div>
     </div>,
     document.body
@@ -581,10 +691,19 @@ const ModalBase = ({ title, onClose, children }: any) => createPortal(
 // --- GLOBAL STYLES (Tailwind Utilities Injection) ---
 const GlobalStyles = () => (
     <style>{`
-        .input { @apply w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-white focus:border-yellow-500 outline-none transition-colors; }
-        .label { @apply text-xs font-bold text-slate-400 uppercase mb-2 block; } /* Increased margin bottom */
-        .btn-primary { @apply bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold rounded-lg shadow-lg hover:shadow-orange-500/20 transition-all transform active:scale-95 px-4 py-2; }
-        .btn-secondary { @apply px-4 py-2 text-slate-400 hover:text-white transition-colors; }
+        /* FORCED DARK INPUT STYLES TO FIX WHITE BOX ISSUE */
+        .input { 
+            @apply w-full bg-slate-950 border border-slate-700 rounded-xl p-3.5 text-white placeholder-slate-600 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition-all shadow-inner;
+        }
+        .label { 
+            @apply text-xs font-bold text-slate-400 uppercase mb-2 block tracking-wider; 
+        }
+        .btn-primary { 
+            @apply bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold rounded-xl shadow-lg hover:shadow-orange-500/20 transition-all transform active:scale-95 px-5 py-2.5; 
+        }
+        .btn-secondary { 
+            @apply px-5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors font-medium; 
+        }
     `}</style>
 );
 
