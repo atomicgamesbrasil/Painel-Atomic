@@ -24,8 +24,7 @@ const STYLES = {
     btnPrimary: "bg-gradient-to-r from-yellow-500 to-orange-600 text-black font-bold rounded-xl shadow-lg hover:shadow-orange-500/20 transition-all transform active:scale-95 px-6 py-3 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2",
     btnSecondary: "px-6 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors font-medium border border-transparent hover:border-slate-700",
     modalOverlay: "fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-opacity",
-    // FIXED: w-[95%] on mobile to prevent touching edges, kept max-h-[90vh]
-    modalContent: "relative bg-slate-900 border border-slate-700 w-[95%] md:w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 overflow-hidden"
+    modalContent: "relative bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 overflow-hidden"
 };
 
 // --- API SERVICE LAYER ---
@@ -538,9 +537,8 @@ const OrdersManager = ({ token, toast }: any) => {
                 </div>
             </header>
             
-            {/* FIXED: Added overflow-x-auto and min-w to table for mobile scrolling */}
-            <div className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden overflow-x-auto">
-                <table className="w-full text-left text-sm min-w-[600px]">
+            <div className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
+                <table className="w-full text-left text-sm">
                     <thead className="bg-slate-900/50 text-slate-400 text-xs uppercase">
                         <tr><th className="p-4">ID</th><th className="p-4">Cliente</th><th className="p-4">Total</th><th className="p-4">Status</th><th className="p-4 text-right">Ações</th></tr>
                     </thead>
@@ -602,8 +600,8 @@ const OrderDetailsModal = ({ order, onClose }: any) => {
                     <div className="text-right"><p className="text-sm text-slate-400 uppercase font-bold tracking-wider">Data</p><p className="font-mono text-slate-300">{order.date}</p></div>
                 </div>
                 
-                {/* Visual Cupom Fiscal - FIXED: Reduced padding on mobile */}
-                <div className="bg-white text-black p-4 md:p-6 rounded-sm shadow-xl font-mono text-sm relative">
+                {/* Visual Cupom Fiscal */}
+                <div className="bg-white text-black p-6 rounded-sm shadow-xl font-mono text-sm relative">
                     {/* Serrilhado fake top */}
                     <div className="absolute top-0 left-0 w-full h-2 bg-slate-900" style={{clipPath: 'polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)'}}></div>
                     
@@ -746,7 +744,7 @@ const ProductForm = ({ product, onClose, onSave }: any) => {
                     
                     <div>
                         <label className={STYLES.label}>Preço</label>
-                        <input required className={STYLES.input} value={form.price} onChange={e => setForm({...form, price: formatCurrencyInput(e.target.value})} placeholder="R$ 0,00" />
+                        <input required className={STYLES.input} value={form.price} onChange={e => setForm({...form, price: formatCurrencyInput(e.target.value)})} placeholder="R$ 0,00" />
                     </div>
                     
                     <div>
@@ -929,17 +927,16 @@ const BannersManager = ({ token, banners, refresh, toast }: any) => {
 };
 
 // --- SHARED UI ---
-// FIXED: Adjusted flex-1 and scroll behavior to ensure footer is visible and content scrolls
 const ModalBase = ({ title, onClose, children }: any) => createPortal(
     <div className={STYLES.modalOverlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
         <div className={STYLES.modalContent}>
-            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-800/50 shrink-0">
+            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
                 <h3 className="text-xl font-bold text-white font-[Rajdhani]">{title}</h3>
                 <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-slate-700 flex items-center justify-center transition-colors">
                     <i className="fa-solid fa-xmark text-lg text-slate-400 hover:text-white"></i>
                 </button>
             </div>
-            <div className="p-4 md:p-6 overflow-y-auto custom-scroll bg-slate-900 flex-1 relative">{children}</div>
+            <div className="p-6 overflow-y-auto custom-scroll bg-slate-900">{children}</div>
         </div>
     </div>,
     document.body
