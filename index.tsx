@@ -20,13 +20,12 @@ const STYLES = {
     label: "text-xs font-bold text-slate-400 uppercase mb-2 block tracking-wider",
     btnPrimary: "bg-gradient-to-r from-yellow-500 to-orange-600 text-black font-bold rounded-xl shadow-lg hover:shadow-orange-500/20 transition-all transform active:scale-95 px-6 py-3 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2",
     btnSecondary: "px-6 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors font-medium border border-transparent hover:border-slate-700",
-    // UX REFINEMENT: Updated Danger Button Style for Header Harmony
     btnDanger: "px-4 py-2 text-red-400 hover:text-white hover:bg-red-900/50 rounded-lg transition-colors font-bold text-sm border border-red-900/30 hover:border-red-500 flex items-center gap-2",
     modalOverlay: "fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-opacity",
     modalContent: "relative bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 overflow-hidden"
 };
 
-// --- ERROR BOUNDARY (Protects against White Screen of Death) ---
+// --- ERROR BOUNDARY ---
 class ErrorBoundary extends React.Component<any, any> {
     constructor(props: any) { super(props); this.state = { hasError: false, error: null }; }
     static getDerivedStateFromError(error: any) { return { hasError: true, error }; }
@@ -96,7 +95,7 @@ const api = {
 // --- TYPES & HELPERS ---
 interface Product { id: string; name: string; price: string; category: string; desc: string; image: string; }
 interface Banner { id: string; image: string; link: string; }
-interface ProductItem { id?: string; name: string; quantity: number; price: number; }
+interface ProductItem { id?: string; name: string; quantity: number; price: number; image?: string; }
 interface Order { id: string; customer: string; customerName?: string; whatsapp?: string; total: string | number; status: string; date: string; items: string | ProductItem[]; }
 interface SiteConfig { whatsapp: string; instagram: string; maintenance: boolean; announcement: string; ga_id: string; }
 interface Stats { total_visits: number; today_visits: number; total_carts: number; today_carts: number; total_whatsapp: number; today_whatsapp: number; last_updated: string; }
@@ -196,7 +195,7 @@ const FileUploader = ({ label, currentImage, onFileSelect }: { label: string, cu
 
 // --- DOMAIN COMPONENTS ---
 
-const OrderDetailsModal = ({ order, onClose, onSave }: any) => {
+const OrderDetailsModal = ({ order, products, onClose, onSave }: any) => {
     const [isEditing, setIsEditing] = useState(false);
     const [form, setForm] = useState({
         id: order.id,
@@ -259,9 +258,20 @@ const OrderDetailsModal = ({ order, onClose, onSave }: any) => {
                             <p className="text-xs">Pedido de Venda</p>
                         </div>
                         <div className="space-y-2 mb-4">
-                            {OrderHelpers.normalizeItems(form.items).map((item, idx) => (
-                                <div key={idx} className="flex justify-between items-start"><span className="mr-2 font-bold">{item.quantity}x</span><span className="flex-1">{item.name}</span></div>
-                            ))}
+                            {OrderHelpers.normalizeItems(order.items).map((item, idx) => {
+                                // Resolving Image for Print/Modal View
+                                const product = products?.find((p: Product) => p.id === item.id || p.name === item.name);
+                                const imageUrl = item.image || product?.image;
+                                
+                                return (
+                                <div key={idx} className="flex justify-between items-center">
+                                    <div className="flex items-center gap-2">
+                                        <span className="mr-1 font-bold">{item.quantity}x</span>
+                                        {imageUrl && <img src={imageUrl} className="w-6 h-6 object-cover rounded border border-gray-200" />}
+                                        <span className="flex-1">{item.name}</span>
+                                    </div>
+                                </div>
+                            )})}
                         </div>
                         <div className="border-t-2 border-dashed border-black/20 pt-4 flex justify-between items-center text-lg font-bold"><span>TOTAL</span><span>{form.total}</span></div>
                         <div className="mt-8 text-center text-xs opacity-50"><p>Obrigado pela preferência!</p><p>www.atomicgames.com.br</p></div>
@@ -296,7 +306,7 @@ const CreateOrderModal = ({ onClose, onSave }: any) => {
 
 // --- MANAGERS & SECTIONS ---
 
-const OrdersManager = ({ token, toast }: any) => {
+const OrdersManager = ({ token, products, toast }: any) => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(false);
     const [modal, setModal] = useState<'create' | 'details' | null>(null);
@@ -354,7 +364,21 @@ const OrdersManager = ({ token, toast }: any) => {
                                 <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${statusColor}`}>{o.status}</span>
                             </div>
                             <div className="bg-slate-900/50 rounded p-2 mb-3 text-xs text-slate-400">
-                                {items.slice(0, 2).map((item, idx) => <div key={idx} className="flex justify-between"><span>{item.quantity}x {item.name}</span></div>)}
+                                {items.slice(0, 2).map((item, idx) => {
+                                    // Image Resolver for Mobile
+                                    const product = products?.find((p: Product) => p.id === item.id || p.name === item.name);
+                                    const imageUrl = item.image || product?.image;
+                                    return (
+                                    <div key={idx} className="flex justify-between items-center py-1">
+                                        <div className="flex items-center gap-2 overflow-hidden">
+                                            {imageUrl && <img src={imageUrl} className="w-8 h-8 rounded object-cover border border-slate-700" />}
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-white">{item.quantity}x</span>
+                                                <span className="truncate">{item.name}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )})}
                                 {items.length > 2 && <span>+{items.length - 2} itens...</span>}
                             </div>
                             <div className="flex justify-between items-center border-t border-slate-700/50 pt-3 mt-2">
@@ -381,7 +405,26 @@ const OrdersManager = ({ token, toast }: any) => {
                             <tr key={o.id} className="hover:bg-slate-700/30 transition">
                                 <td className="p-4 font-mono text-xs text-slate-500">#{o.id.slice(0,6)}...</td>
                                 <td className="p-4"><div className="font-bold">{customer}</div><div className="text-xs text-slate-500">{o.whatsapp || 'Via Site'}</div></td>
-                                <td className="p-4 text-xs text-slate-400">{items.slice(0, 2).map((i, idx) => <div key={idx}>{i.quantity}x {i.name}</div>)}{items.length > 2 && <div className="italic">+{items.length - 2} mais...</div>}</td>
+                                <td className="p-4 text-xs text-slate-400">
+                                    {items.slice(0, 2).map((i, idx) => {
+                                        // Image Resolver for Desktop Table
+                                        const product = products?.find((p: Product) => p.id === i.id || p.name === i.name);
+                                        const imageUrl = i.image || product?.image;
+                                        return (
+                                        <div key={idx} className="flex items-center gap-2 mb-1">
+                                            {imageUrl ? (
+                                                <img src={imageUrl} className="w-8 h-8 rounded-md object-cover border border-slate-700 bg-slate-800" />
+                                            ) : (
+                                                <div className="w-8 h-8 rounded-md bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-600 text-[10px]"><i className="fa-solid fa-image"></i></div>
+                                            )}
+                                            <div>
+                                                <span className="text-emerald-400 font-bold mr-1">{i.quantity}x</span>
+                                                {i.name}
+                                            </div>
+                                        </div>
+                                    )})}
+                                    {items.length > 2 && <div className="italic pl-10">+{items.length - 2} mais...</div>}
+                                </td>
                                 <td className="p-4 font-mono text-emerald-400 font-bold">{total}</td>
                                 <td className="p-4"><span className={`px-2 py-1 rounded text-[10px] font-bold uppercase border ${statusColor}`}>{o.status}</span></td>
                                 <td className="p-4 text-right flex justify-end gap-2">
@@ -395,7 +438,7 @@ const OrdersManager = ({ token, toast }: any) => {
                 </table>
             </div>
             {modal === 'create' && <CreateOrderModal onClose={() => setModal(null)} onSave={handleCreate} />}
-            {modal === 'details' && selectedOrder && <OrderDetailsModal order={selectedOrder} onClose={() => setModal(null)} onSave={handleEditOrder} />}
+            {modal === 'details' && selectedOrder && <OrderDetailsModal order={selectedOrder} products={products} onClose={() => setModal(null)} onSave={handleEditOrder} />}
         </div>
     );
 };
@@ -602,7 +645,7 @@ const DashboardLayout = ({ token, onLogout, theme, toggleTheme }: any) => {
                     {section === 'dashboard' && <DashboardHome token={token} products={products} />}
                     {section === 'products' && <ProductsManager token={token} products={products} refresh={loadCoreData} loading={loadingData} toast={showToast} />}
                     {section === 'banners' && <BannersManager token={token} banners={banners} refresh={loadCoreData} toast={showToast} />}
-                    {section === 'orders' && <OrdersManager token={token} toast={showToast} />}
+                    {section === 'orders' && <OrdersManager token={token} products={products} toast={showToast} />}
                     {section === 'settings' && <SettingsManager token={token} toast={showToast} />}
                 </main>
             </div>
