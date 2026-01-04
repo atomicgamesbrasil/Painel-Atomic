@@ -64,10 +64,30 @@ const api = {
     upload: (token: string, file: { filename: string, content: string, folder: string }) => api.request('/upload', 'POST', file, token)
 };
 
-// --- TYPES ---
+// --- TYPES (UPDATED FOR RESILIENCE) ---
 interface Product { id: string; name: string; price: string; category: string; desc: string; image: string; }
 interface Banner { id: string; image: string; link: string; }
-interface Order { id: string; customer: string; total: string; status: string; date: string; items: string; }
+
+// Helper Interface for normalized items
+interface ProductItem {
+  id?: string;
+  name: string;
+  quantity: number;
+  price: number;
+}
+
+// Updated Order Interface: Flexible types to prevent crashes
+interface Order { 
+    id: string; 
+    customer: string; 
+    customerName?: string; // Admin nomenclature support
+    whatsapp?: string;     // Optional
+    total: string | number; // Supports raw string from site or number from admin
+    status: string; 
+    date: string; 
+    items: string | ProductItem[]; // Supports raw string from site or array from admin
+}
+
 interface SiteConfig { whatsapp: string; instagram: string; maintenance: boolean; announcement: string; ga_id: string; }
 interface Stats { 
     total_visits: number; today_visits: number; 
@@ -76,6 +96,70 @@ interface Stats {
     last_updated: string; 
 }
 interface ToastMsg { id: number; type: 'success' | 'error' | 'info'; text: string; }
+
+// --- HELPERS FOR ORDER NORMALIZATION (ADAPTER PATTERN) ---
+const OrderHelpers = {
+    normalizeItems: (items: Order['items']): ProductItem[] => {
+        if (Array.isArray(items)) return items;
+        
+        if (typeof items === 'string') {
+            if (!items) return [];
+            // Remove prefix if present (e.g., "[SITE] ...")
+            const cleanItems = items.replace('[SITE]', '').trim();
+            if (!cleanItems) return [];
+
+            return cleanItems.split('|').map((itemStr, index) => {
+                const cleanStr = itemStr.trim();
+                // Try to extract quantity and name using regex: "2x Product Name (R$ 100)"
+                const qtyMatch = cleanStr.match(/^(\d+)x\s+(.+?)(?:\s+\(R\$.*?\))?$/);
+                
+                if (qtyMatch) {
+                     return {
+                        id: `parsed-${index}`,
+                        quantity: parseInt(qtyMatch[1], 10),
+                        name: qtyMatch[2],
+                        price: 0
+                     };
+                }
+                
+                // Fallback for simple string
+                return {
+                    id: `raw-${index}`,
+                    name: cleanStr,
+                    quantity: 1,
+                    price: 0
+                };
+            });
+        }
+        return [];
+    },
+
+    normalizeTotal: (total: Order['total']): string => {
+        if (typeof total === 'number') return `R$ ${total.toFixed(2)}`;
+        return total || 'R$ 0,00';
+    },
+
+    getCustomerName: (order: Order): string => {
+        return order.customer || order.customerName || 'Cliente';
+    },
+
+    getStatusColor: (status: string) => {
+        const s = String(status).toLowerCase();
+        const colors: any = { 
+            pending: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20', 
+            pendente: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
+            approved: 'text-blue-400 bg-blue-400/10 border-blue-400/20', 
+            aprovado: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
+            shipped: 'text-purple-400 bg-purple-400/10 border-purple-400/20', 
+            enviado: 'text-purple-400 bg-purple-400/10 border-purple-400/20',
+            delivered: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
+            entregue: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
+            canceled: 'text-red-400 bg-red-400/10 border-red-400/20',
+            cancelado: 'text-red-400 bg-red-400/10 border-red-400/20'
+        };
+        return colors[s] || 'text-slate-400 bg-slate-700/50 border-slate-600';
+    }
+};
 
 // --- CUSTOM UI COMPONENTS ---
 
@@ -529,32 +613,58 @@ const OrdersManager = ({ token, toast }: any) => {
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
             <header className="flex justify-between items-center border-b border-slate-700/50 pb-4">
-                <h2 className="text-3xl font-bold font-[Rajdhani]">Pedidos</h2>
+                <div>
+                  <h2 className="text-3xl font-bold font-[Rajdhani]">Pedidos</h2>
+                  <p className="text-slate-400 text-sm hidden md:block">Gerencie solicitações do site e do WhatsApp</p>
+                </div>
                 <div className="flex gap-2">
                     <button onClick={() => setModal('create')} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg"><i className="fa-solid fa-plus mr-2"></i> Novo</button>
                     <button onClick={() => loadOrders()} className="p-2 text-slate-400 hover:text-white"><i className="fa-solid fa-sync"></i></button>
                 </div>
             </header>
             
-            {/* MOBILE VIEW (CARDS) - Fix for overflow issue */}
+            {/* MOBILE VIEW (CARDS) - Resilient */}
             <div className="md:hidden space-y-4">
                 {loading && orders.length === 0 ? (
                     <div className="text-center text-slate-500 py-8">Carregando pedidos...</div>
                 ) : (
-                    orders.map(o => (
-                        <div key={o.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 shadow-sm relative">
+                    orders.map(o => {
+                        const customer = OrderHelpers.getCustomerName(o);
+                        const total = OrderHelpers.normalizeTotal(o.total);
+                        const statusColor = OrderHelpers.getStatusColor(o.status);
+                        const items = OrderHelpers.normalizeItems(o.items);
+
+                        return (
+                        <div key={o.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 shadow-sm relative overflow-hidden">
                             <div className="flex justify-between items-start mb-3">
                                 <div>
                                     <div className="text-[10px] font-mono text-slate-500 uppercase mb-1">#{o.id}</div>
-                                    <div className="font-bold text-white text-lg">{o.customer}</div>
+                                    <div className="font-bold text-white text-lg">{customer}</div>
+                                    <div className="flex items-center gap-2 text-slate-400 text-xs mt-1">
+                                       <i className="fab fa-whatsapp text-emerald-500"></i>
+                                       {o.whatsapp || 'Via Site'}
+                                    </div>
                                 </div>
-                                <StatusBadge status={o.status} />
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${statusColor}`}>
+                                    {o.status}
+                                </span>
                             </div>
                             
+                            {/* Items Summary Mobile */}
+                            <div className="bg-slate-900/50 rounded p-2 mb-3 text-xs text-slate-400">
+                                {items.slice(0, 2).map((item, idx) => (
+                                    <div key={idx} className="flex justify-between">
+                                        <span>{item.quantity}x {item.name}</span>
+                                    </div>
+                                ))}
+                                {items.length > 2 && <span>+{items.length - 2} itens...</span>}
+                                {items.length === 0 && <span>Sem detalhes de itens</span>}
+                            </div>
+
                             <div className="flex justify-between items-center border-t border-slate-700/50 pt-3 mt-2">
                                  <div>
                                     <div className="text-[10px] text-slate-400 uppercase font-bold">Total</div>
-                                    <div className="text-emerald-400 font-mono font-bold text-lg">{o.total}</div>
+                                    <div className="text-emerald-400 font-mono font-bold text-lg">{total}</div>
                                  </div>
                                  
                                  <div className="flex items-center gap-2">
@@ -573,23 +683,38 @@ const OrdersManager = ({ token, toast }: any) => {
                                  </div>
                             </div>
                         </div>
-                    ))
+                    )})
                 )}
             </div>
 
-            {/* DESKTOP VIEW (TABLE) - Hidden on mobile */}
+            {/* DESKTOP VIEW (TABLE) - Resilient */}
             <div className="hidden md:block bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
                 <table className="w-full text-left text-sm">
                     <thead className="bg-slate-900/50 text-slate-400 text-xs uppercase">
-                        <tr><th className="p-4">ID</th><th className="p-4">Cliente</th><th className="p-4">Total</th><th className="p-4">Status</th><th className="p-4 text-right">Ações</th></tr>
+                        <tr><th className="p-4">ID</th><th className="p-4">Cliente</th><th className="p-4">Itens</th><th className="p-4">Total</th><th className="p-4">Status</th><th className="p-4 text-right">Ações</th></tr>
                     </thead>
                     <tbody className="divide-y divide-slate-700/30">
-                        {loading && orders.length === 0 ? <tr><td colSpan={5} className="p-8 text-center text-slate-500">Carregando...</td></tr> : orders.map(o => (
+                        {loading && orders.length === 0 ? <tr><td colSpan={6} className="p-8 text-center text-slate-500">Carregando...</td></tr> : orders.map(o => {
+                            const customer = OrderHelpers.getCustomerName(o);
+                            const total = OrderHelpers.normalizeTotal(o.total);
+                            const items = OrderHelpers.normalizeItems(o.items);
+                            const statusColor = OrderHelpers.getStatusColor(o.status);
+
+                            return (
                             <tr key={o.id} className="hover:bg-slate-700/30 transition">
-                                <td className="p-4 font-mono text-xs text-slate-500">#{o.id}</td>
-                                <td className="p-4 font-bold">{o.customer}</td>
-                                <td className="p-4 font-mono text-emerald-400">{o.total}</td>
-                                <td className="p-4"><StatusBadge status={o.status} /></td>
+                                <td className="p-4 font-mono text-xs text-slate-500">#{o.id.slice(0,6)}...</td>
+                                <td className="p-4">
+                                    <div className="font-bold">{customer}</div>
+                                    <div className="text-xs text-slate-500">{o.whatsapp || 'Via Site'}</div>
+                                </td>
+                                <td className="p-4 text-xs text-slate-400">
+                                    {items.slice(0, 2).map((i, idx) => <div key={idx}>{i.quantity}x {i.name}</div>)}
+                                    {items.length > 2 && <div className="italic">+{items.length - 2} mais...</div>}
+                                </td>
+                                <td className="p-4 font-mono text-emerald-400 font-bold">{total}</td>
+                                <td className="p-4">
+                                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase border ${statusColor}`}>{o.status}</span>
+                                </td>
                                 <td className="p-4 text-right flex justify-end gap-2">
                                     <button onClick={() => { setSelectedOrder(o); setModal('details'); }} className="p-2 bg-slate-700 hover:bg-slate-600 rounded text-blue-400"><i className="fa-solid fa-eye"></i></button>
                                     <select value={o.status} onChange={(e) => handleUpdate(o.id, e.target.value)} className="bg-slate-900 border border-slate-700 rounded text-xs p-1 outline-none">
@@ -597,7 +722,7 @@ const OrdersManager = ({ token, toast }: any) => {
                                     </select>
                                 </td>
                             </tr>
-                        ))}
+                        )})}
                     </tbody>
                 </table>
             </div>
@@ -607,18 +732,13 @@ const OrdersManager = ({ token, toast }: any) => {
     );
 };
 
-const StatusBadge = ({ status }: { status: string }) => {
-    const colors: any = { pending: 'text-yellow-400 bg-yellow-400/10', approved: 'text-blue-400 bg-blue-400/10', shipped: 'text-purple-400 bg-purple-400/10', delivered: 'text-emerald-400 bg-emerald-400/10' };
-    return <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase border border-white/5 ${colors[status] || 'text-slate-400'}`}>{status}</span>;
-};
-
 const CreateOrderModal = ({ onClose, onSave }: any) => {
     const [form, setForm] = useState({ customer: '', items: '', total: '', status: 'approved' });
     return (
         <ModalBase title="Novo Pedido Manual" onClose={onClose}>
             <form onSubmit={(e) => { e.preventDefault(); onSave(form); }} className="space-y-4">
                 <div><label className={STYLES.label}>Cliente</label><input required className={STYLES.input} value={form.customer} onChange={e => setForm({...form, customer: e.target.value})} /></div>
-                <div><label className={STYLES.label}>Itens</label><textarea required className={STYLES.input} value={form.items} onChange={e => setForm({...form, items: e.target.value})} /></div>
+                <div><label className={STYLES.label}>Itens</label><textarea required className={STYLES.input} value={form.items} onChange={e => setForm({...form, items: e.target.value})} placeholder="Ex: 1x Jogo X | 2x Jogo Y" /></div>
                 <div className="grid grid-cols-2 gap-4">
                     <div><label className={STYLES.label}>Total</label><input required className={STYLES.input} value={form.total} onChange={e => setForm({...form, total: formatCurrencyInput(e.target.value)})} placeholder="R$ 0,00" /></div>
                     <div><label className={STYLES.label}>Status</label><select className={STYLES.input} value={form.status} onChange={e => setForm({...form, status: e.target.value})}><option value="approved">Aprovado</option><option value="pending">Pendente</option></select></div>
@@ -630,14 +750,16 @@ const CreateOrderModal = ({ onClose, onSave }: any) => {
 };
 
 const OrderDetailsModal = ({ order, onClose }: any) => {
-    // Parser simples para transformar a string de itens em uma lista visual
-    const itemsList = order.items.split('|').map((item: string) => item.trim());
+    // Adapter Pattern: Normalizes items for display
+    const items = OrderHelpers.normalizeItems(order.items);
+    const total = OrderHelpers.normalizeTotal(order.total);
+    const customer = OrderHelpers.getCustomerName(order);
 
     return (
         <ModalBase title={`Pedido #${order.id}`} onClose={onClose}>
             <div className="space-y-6" id="print-area">
                 <div className="flex justify-between items-start border-b border-slate-700 pb-4">
-                    <div><p className="text-sm text-slate-400 uppercase font-bold tracking-wider">Cliente</p><p className="text-xl font-bold">{order.customer}</p></div>
+                    <div><p className="text-sm text-slate-400 uppercase font-bold tracking-wider">Cliente</p><p className="text-xl font-bold">{customer}</p></div>
                     <div className="text-right"><p className="text-sm text-slate-400 uppercase font-bold tracking-wider">Data</p><p className="font-mono text-slate-300">{order.date}</p></div>
                 </div>
                 
@@ -652,17 +774,19 @@ const OrderDetailsModal = ({ order, onClose }: any) => {
                     </div>
 
                     <div className="space-y-2 mb-4">
-                        {itemsList.map((item: string, idx: number) => (
+                        {items.length > 0 ? items.map((item, idx) => (
                             <div key={idx} className="flex justify-between items-start">
-                                <span className="mr-2">•</span>
-                                <span className="flex-1">{item}</span>
+                                <span className="mr-2 font-bold">{item.quantity}x</span>
+                                <span className="flex-1">{item.name}</span>
                             </div>
-                        ))}
+                        )) : (
+                             <div className="text-center italic opacity-50">Detalhes dos itens indisponíveis</div>
+                        )}
                     </div>
 
                     <div className="border-t-2 border-dashed border-black/20 pt-4 flex justify-between items-center text-lg font-bold">
                         <span>TOTAL</span>
-                        <span>{order.total}</span>
+                        <span>{total}</span>
                     </div>
 
                     <div className="mt-8 text-center text-xs opacity-50">
