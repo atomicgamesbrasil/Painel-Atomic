@@ -22,6 +22,7 @@ const STYLES = {
     label: "text-xs font-bold text-slate-400 uppercase mb-2 block tracking-wider",
     btnPrimary: "bg-gradient-to-r from-yellow-500 to-orange-600 text-black font-bold rounded-xl shadow-lg hover:shadow-orange-500/20 transition-all transform active:scale-95 px-6 py-3 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2",
     btnSecondary: "px-6 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors font-medium border border-transparent hover:border-slate-700",
+    btnDanger: "px-6 py-3 text-red-400 hover:text-white hover:bg-red-900/50 rounded-xl transition-colors font-medium border border-red-900/30 hover:border-red-500",
     modalOverlay: "fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-opacity",
     modalContent: "relative bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 overflow-hidden"
 };
@@ -55,9 +56,15 @@ const api = {
     deleteProduct: (token: string, id: string) => api.request(`/products/${id}`, 'DELETE', undefined, token),
     getBanners: (token: string) => api.request('/banners', 'GET', undefined, token),
     saveBanners: (token: string, banners: any[]) => api.request('/banners', 'POST', banners, token),
+    
+    // ORDERS API (Expanded for Editing/Deletion)
     getOrders: (token: string) => api.request('/orders', 'GET', undefined, token),
     updateOrder: (token: string, orderId: string, status: string) => api.request('/orders/update', 'POST', { orderId, status }, token),
     createOrder: (token: string, order: any) => api.request('/orders', 'POST', order, token),
+    editOrder: (token: string, order: any) => api.request('/orders/edit', 'POST', order, token), // Requires Backend Route
+    deleteOrder: (token: string, id: string) => api.request(`/orders/${id}`, 'DELETE', undefined, token), // Requires Backend Route
+    clearOrders: (token: string) => api.request('/orders/clear', 'POST', undefined, token), // Requires Backend Route
+    
     getStats: (token: string) => api.request('/stats', 'GET', undefined, token),
     getConfig: (token: string) => api.request('/config', 'GET', undefined, token),
     saveConfig: (token: string, config: any) => api.request('/config', 'POST', config, token),
@@ -132,6 +139,15 @@ const OrderHelpers = {
             });
         }
         return [];
+    },
+
+    // Convert array back to string for editing
+    itemsToString: (items: Order['items']): string => {
+        if (typeof items === 'string') return items;
+        if (Array.isArray(items)) {
+             return items.map(i => `${i.quantity}x ${i.name}`).join(' | ');
+        }
+        return '';
     },
 
     normalizeTotal: (total: Order['total']): string => {
@@ -610,6 +626,24 @@ const OrdersManager = ({ token, toast }: any) => {
         try { await api.createOrder(token, order); loadOrders(); setModal(null); toast('success', 'Pedido criado'); } catch(e) { toast('error', 'Erro ao criar'); }
     };
 
+    // New: Handle Full Order Update (Edit Mode)
+    const handleEditOrder = async (order: any) => {
+        try { await api.editOrder(token, order); loadOrders(); setModal(null); toast('success', 'Pedido atualizado'); } catch(e) { toast('error', 'Erro ao editar'); }
+    };
+
+    // New: Handle Delete
+    const handleDelete = async (id: string) => {
+        if(!confirm('ATENÇÃO: Deseja realmente excluir este pedido? Ação irreversível.')) return;
+        try { await api.deleteOrder(token, id); loadOrders(); setModal(null); toast('success', 'Pedido excluído'); } catch(e) { toast('error', 'Erro ao excluir'); }
+    };
+
+    // New: Clear All
+    const handleClearAll = async () => {
+        if(!confirm('PERIGO: Isso apagará TODOS os pedidos da lista. Confirma?')) return;
+        if(!confirm('Tem certeza absoluta? Esta ação não pode ser desfeita.')) return;
+        try { await api.clearOrders(token); loadOrders(); toast('success', 'Lista limpa com sucesso'); } catch(e) { toast('error', 'Erro ao limpar lista'); }
+    };
+
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
             <header className="flex justify-between items-center border-b border-slate-700/50 pb-4">
@@ -618,6 +652,8 @@ const OrdersManager = ({ token, toast }: any) => {
                   <p className="text-slate-400 text-sm hidden md:block">Gerencie solicitações do site e do WhatsApp</p>
                 </div>
                 <div className="flex gap-2">
+                    {/* Clear Button (Priority 2) */}
+                    <button onClick={handleClearAll} className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 px-4 py-2 rounded-lg font-bold text-sm shadow-lg transition-colors"><i className="fa-solid fa-trash-can mr-2"></i> Limpar Lista</button>
                     <button onClick={() => setModal('create')} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg"><i className="fa-solid fa-plus mr-2"></i> Novo</button>
                     <button onClick={() => loadOrders()} className="p-2 text-slate-400 hover:text-white"><i className="fa-solid fa-sync"></i></button>
                 </div>
@@ -668,6 +704,9 @@ const OrdersManager = ({ token, toast }: any) => {
                                  </div>
                                  
                                  <div className="flex items-center gap-2">
+                                    <button onClick={() => handleDelete(o.id)} className="w-10 h-10 rounded-lg bg-slate-800 text-red-400 flex items-center justify-center hover:bg-red-500/20 transition-colors border border-slate-700">
+                                        <i className="fa-solid fa-trash"></i>
+                                    </button>
                                     <button onClick={() => { setSelectedOrder(o); setModal('details'); }} className="w-10 h-10 rounded-lg bg-slate-700 text-blue-400 flex items-center justify-center hover:bg-slate-600 transition-colors">
                                         <i className="fa-solid fa-eye"></i>
                                     </button>
@@ -716,6 +755,7 @@ const OrdersManager = ({ token, toast }: any) => {
                                     <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase border ${statusColor}`}>{o.status}</span>
                                 </td>
                                 <td className="p-4 text-right flex justify-end gap-2">
+                                    <button onClick={() => handleDelete(o.id)} className="p-2 text-slate-500 hover:text-red-400 transition-colors" title="Excluir"><i className="fa-solid fa-trash"></i></button>
                                     <button onClick={() => { setSelectedOrder(o); setModal('details'); }} className="p-2 bg-slate-700 hover:bg-slate-600 rounded text-blue-400"><i className="fa-solid fa-eye"></i></button>
                                     <select value={o.status} onChange={(e) => handleUpdate(o.id, e.target.value)} className="bg-slate-900 border border-slate-700 rounded text-xs p-1 outline-none">
                                         <option value="pending">Pendente</option><option value="approved">Aprovado</option><option value="shipped">Enviado</option><option value="delivered">Entregue</option>
@@ -727,7 +767,7 @@ const OrdersManager = ({ token, toast }: any) => {
                 </table>
             </div>
             {modal === 'create' && <CreateOrderModal onClose={() => setModal(null)} onSave={handleCreate} />}
-            {modal === 'details' && selectedOrder && <OrderDetailsModal order={selectedOrder} onClose={() => setModal(null)} />}
+            {modal === 'details' && selectedOrder && <OrderDetailsModal order={selectedOrder} onClose={() => setModal(null)} onSave={handleEditOrder} />}
         </div>
     );
 };
@@ -749,56 +789,131 @@ const CreateOrderModal = ({ onClose, onSave }: any) => {
     );
 };
 
-const OrderDetailsModal = ({ order, onClose }: any) => {
-    // Adapter Pattern: Normalizes items for display
-    const items = OrderHelpers.normalizeItems(order.items);
-    const total = OrderHelpers.normalizeTotal(order.total);
-    const customer = OrderHelpers.getCustomerName(order);
+// UPDATED: Supports Edit Mode (Priority 3 - to fix Priority 1)
+const OrderDetailsModal = ({ order, onClose, onSave }: any) => {
+    const [isEditing, setIsEditing] = useState(false);
+    
+    // Form state initialized with order data (normalized)
+    const [form, setForm] = useState({
+        id: order.id,
+        customer: OrderHelpers.getCustomerName(order),
+        whatsapp: order.whatsapp || '',
+        total: OrderHelpers.normalizeTotal(order.total),
+        items: OrderHelpers.itemsToString(order.items), // Convert to string for easy editing
+        status: order.status,
+        date: order.date
+    });
+
+    const handleSave = () => {
+        onSave(form); // Pass updated data back
+    };
 
     return (
         <ModalBase title={`Pedido #${order.id}`} onClose={onClose}>
-            <div className="space-y-6" id="print-area">
-                <div className="flex justify-between items-start border-b border-slate-700 pb-4">
-                    <div><p className="text-sm text-slate-400 uppercase font-bold tracking-wider">Cliente</p><p className="text-xl font-bold">{customer}</p></div>
-                    <div className="text-right"><p className="text-sm text-slate-400 uppercase font-bold tracking-wider">Data</p><p className="font-mono text-slate-300">{order.date}</p></div>
+            {isEditing ? (
+                /* EDIT MODE FORM */
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-lg flex items-start gap-2 mb-2">
+                         <i className="fa-solid fa-triangle-exclamation text-yellow-500 mt-1"></i>
+                         <p className="text-xs text-yellow-200">Você está editando este pedido manualmente. Use isso para corrigir preços ou itens incorretos vindos do site.</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                         <div>
+                            <label className={STYLES.label}>Cliente</label>
+                            <input className={STYLES.input} value={form.customer} onChange={e => setForm({...form, customer: e.target.value})} />
+                         </div>
+                         <div>
+                            <label className={STYLES.label}>WhatsApp</label>
+                            <input className={STYLES.input} value={form.whatsapp} onChange={e => setForm({...form, whatsapp: e.target.value})} />
+                         </div>
+                    </div>
+
+                    <div>
+                        <label className={STYLES.label}>Itens (Texto Livre)</label>
+                        <textarea className={STYLES.input + " h-24 resize-none font-mono text-sm"} value={form.items} onChange={e => setForm({...form, items: e.target.value})} />
+                        <p className="text-[10px] text-slate-500 mt-1">Separe itens por pipe "|" ou nova linha para melhor visualização.</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                             <label className={STYLES.label}>Total (R$)</label>
+                             <input className={STYLES.input} value={form.total} onChange={e => setForm({...form, total: formatCurrencyInput(e.target.value)})} />
+                        </div>
+                        <div>
+                             <label className={STYLES.label}>Status</label>
+                             <select className={STYLES.input} value={form.status} onChange={e => setForm({...form, status: e.target.value})}>
+                                <option value="pending">Pendente</option>
+                                <option value="approved">Aprovado</option>
+                                <option value="shipped">Enviado</option>
+                                <option value="delivered">Entregue</option>
+                                <option value="canceled">Cancelado</option>
+                             </select>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-700">
+                        <button onClick={() => setIsEditing(false)} className={STYLES.btnSecondary}>Cancelar</button>
+                        <button onClick={handleSave} className={STYLES.btnPrimary}>Salvar Alterações</button>
+                    </div>
                 </div>
-                
-                {/* Visual Cupom Fiscal */}
-                <div className="bg-white text-black p-6 rounded-sm shadow-xl font-mono text-sm relative">
-                    {/* Serrilhado fake top */}
-                    <div className="absolute top-0 left-0 w-full h-2 bg-slate-900" style={{clipPath: 'polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)'}}></div>
+            ) : (
+                /* VIEW MODE */
+                <div className="space-y-6" id="print-area">
+                    <div className="flex justify-between items-start border-b border-slate-700 pb-4">
+                        <div>
+                            <p className="text-sm text-slate-400 uppercase font-bold tracking-wider">Cliente</p>
+                            <p className="text-xl font-bold">{form.customer}</p>
+                            <p className="text-sm text-emerald-500 flex items-center gap-1 mt-1"><i className="fab fa-whatsapp"></i> {form.whatsapp || 'Via Site'}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-sm text-slate-400 uppercase font-bold tracking-wider">Data</p>
+                            <p className="font-mono text-slate-300">{form.date}</p>
+                        </div>
+                    </div>
                     
-                    <div className="text-center border-b-2 border-dashed border-black/20 pb-4 mb-4 mt-2">
-                        <h4 className="font-bold text-lg uppercase">Atomic Games</h4>
-                        <p className="text-xs">Pedido de Venda</p>
-                    </div>
+                    {/* Visual Cupom Fiscal */}
+                    <div className="bg-white text-black p-6 rounded-sm shadow-xl font-mono text-sm relative">
+                        {/* Serrilhado fake top */}
+                        <div className="absolute top-0 left-0 w-full h-2 bg-slate-900" style={{clipPath: 'polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)'}}></div>
+                        
+                        <div className="text-center border-b-2 border-dashed border-black/20 pb-4 mb-4 mt-2">
+                            <h4 className="font-bold text-lg uppercase">Atomic Games</h4>
+                            <p className="text-xs">Pedido de Venda</p>
+                        </div>
 
-                    <div className="space-y-2 mb-4">
-                        {items.length > 0 ? items.map((item, idx) => (
-                            <div key={idx} className="flex justify-between items-start">
-                                <span className="mr-2 font-bold">{item.quantity}x</span>
-                                <span className="flex-1">{item.name}</span>
-                            </div>
-                        )) : (
-                             <div className="text-center italic opacity-50">Detalhes dos itens indisponíveis</div>
-                        )}
-                    </div>
+                        <div className="space-y-2 mb-4">
+                            {/* Uses helper to re-normalize string back to array for display */}
+                            {OrderHelpers.normalizeItems(form.items).length > 0 ? OrderHelpers.normalizeItems(form.items).map((item, idx) => (
+                                <div key={idx} className="flex justify-between items-start">
+                                    <span className="mr-2 font-bold">{item.quantity}x</span>
+                                    <span className="flex-1">{item.name}</span>
+                                </div>
+                            )) : (
+                                <div className="text-center italic opacity-50">Detalhes dos itens indisponíveis</div>
+                            )}
+                        </div>
 
-                    <div className="border-t-2 border-dashed border-black/20 pt-4 flex justify-between items-center text-lg font-bold">
-                        <span>TOTAL</span>
-                        <span>{total}</span>
-                    </div>
+                        <div className="border-t-2 border-dashed border-black/20 pt-4 flex justify-between items-center text-lg font-bold">
+                            <span>TOTAL</span>
+                            <span>{form.total}</span>
+                        </div>
 
-                    <div className="mt-8 text-center text-xs opacity-50">
-                        <p>Obrigado pela preferência!</p>
-                        <p>www.atomicgames.com.br</p>
-                    </div>
+                        <div className="mt-8 text-center text-xs opacity-50">
+                            <p>Obrigado pela preferência!</p>
+                            <p>www.atomicgames.com.br</p>
+                        </div>
 
-                    {/* Serrilhado fake bottom */}
-                    <div className="absolute bottom-0 left-0 w-full h-2 bg-slate-900" style={{clipPath: 'polygon(0% 100%, 5% 0%, 10% 100%, 15% 0%, 20% 100%, 25% 0%, 30% 100%, 35% 0%, 40% 100%, 45% 0%, 50% 100%, 55% 0%, 60% 100%, 65% 0%, 70% 100%, 75% 0%, 80% 100%, 85% 0%, 90% 100%, 95% 0%, 100% 100%)'}}></div>
+                        {/* Serrilhado fake bottom */}
+                        <div className="absolute bottom-0 left-0 w-full h-2 bg-slate-900" style={{clipPath: 'polygon(0% 100%, 5% 0%, 10% 100%, 15% 0%, 20% 100%, 25% 0%, 30% 100%, 35% 0%, 40% 100%, 45% 0%, 50% 100%, 55% 0%, 60% 100%, 65% 0%, 70% 100%, 75% 0%, 80% 100%, 85% 0%, 90% 100%, 95% 0%, 100% 100%)'}}></div>
+                    </div>
+                    
+                    <div className="mt-6 flex justify-end gap-3 no-print">
+                        <button onClick={() => setIsEditing(true)} className={STYLES.btnPrimary}><i className="fa-solid fa-pen-to-square mr-2"></i> Editar</button>
+                        <button onClick={() => window.print()} className={STYLES.btnSecondary}><i className="fa-solid fa-print mr-2"></i> Imprimir</button>
+                    </div>
                 </div>
-            </div>
-            <div className="mt-6 flex justify-end gap-3 no-print"><button onClick={() => window.print()} className={STYLES.btnSecondary}><i className="fa-solid fa-print mr-2"></i> Imprimir</button></div>
+            )}
         </ModalBase>
     );
 };
