@@ -185,6 +185,53 @@ app.post('/api/orders/update', authenticateToken, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// [NEW] Rota de Edição Completa
+app.post('/api/orders/edit', authenticateToken, async (req, res) => {
+    try {
+        const updatedOrder = req.body;
+        const current = await getFile(PATHS.orders);
+        let list = Array.isArray(current.content) ? current.content : [];
+        const idx = list.findIndex(o => o.id === updatedOrder.id);
+        
+        if (idx !== -1) {
+            // Merge para garantir que campos não enviados sejam preservados, mas atualizando os novos
+            list[idx] = { ...list[idx], ...updatedOrder };
+            await saveFile(PATHS.orders, list, `EDIT ORDER: ${updatedOrder.id}`, current.sha);
+            res.json({ success: true });
+        } else {
+            res.status(404).json({ error: 'Order not found' });
+        }
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// [NEW] Rota de Exclusão Individual
+app.delete('/api/orders/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const current = await getFile(PATHS.orders);
+        let list = Array.isArray(current.content) ? current.content : [];
+        
+        const newList = list.filter(o => o.id !== id);
+        
+        if (list.length !== newList.length) {
+            await saveFile(PATHS.orders, newList, `DELETE ORDER: ${id}`, current.sha);
+            res.json({ success: true });
+        } else {
+            res.status(404).json({ error: 'Order not found' });
+        }
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// [NEW] Rota de Limpeza Total (Clear All)
+app.post('/api/orders/clear', authenticateToken, async (req, res) => {
+    try {
+        const current = await getFile(PATHS.orders);
+        // Salva array vazio
+        await saveFile(PATHS.orders, [], "CLEAR ALL ORDERS", current.sha);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/public/order', async (req, res) => {
     // Criação Automática pelo Site
     try {
