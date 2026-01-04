@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createPortal } from 'react-dom';
@@ -537,7 +536,49 @@ const OrdersManager = ({ token, toast }: any) => {
                 </div>
             </header>
             
-            <div className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
+            {/* MOBILE VIEW (CARDS) - Fix for overflow issue */}
+            <div className="md:hidden space-y-4">
+                {loading && orders.length === 0 ? (
+                    <div className="text-center text-slate-500 py-8">Carregando pedidos...</div>
+                ) : (
+                    orders.map(o => (
+                        <div key={o.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 shadow-sm relative">
+                            <div className="flex justify-between items-start mb-3">
+                                <div>
+                                    <div className="text-[10px] font-mono text-slate-500 uppercase mb-1">#{o.id}</div>
+                                    <div className="font-bold text-white text-lg">{o.customer}</div>
+                                </div>
+                                <StatusBadge status={o.status} />
+                            </div>
+                            
+                            <div className="flex justify-between items-center border-t border-slate-700/50 pt-3 mt-2">
+                                 <div>
+                                    <div className="text-[10px] text-slate-400 uppercase font-bold">Total</div>
+                                    <div className="text-emerald-400 font-mono font-bold text-lg">{o.total}</div>
+                                 </div>
+                                 
+                                 <div className="flex items-center gap-2">
+                                    <button onClick={() => { setSelectedOrder(o); setModal('details'); }} className="w-10 h-10 rounded-lg bg-slate-700 text-blue-400 flex items-center justify-center hover:bg-slate-600 transition-colors">
+                                        <i className="fa-solid fa-eye"></i>
+                                    </button>
+                                    <div className="relative">
+                                        <select value={o.status} onChange={(e) => handleUpdate(o.id, e.target.value)} className="appearance-none bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded-lg pl-3 pr-8 py-3 outline-none focus:border-yellow-500 transition-colors font-medium">
+                                            <option value="pending">Pendente</option>
+                                            <option value="approved">Aprovado</option>
+                                            <option value="shipped">Enviado</option>
+                                            <option value="delivered">Entregue</option>
+                                        </select>
+                                        <i className="fa-solid fa-chevron-down absolute right-3 top-3.5 text-xs text-slate-500 pointer-events-none"></i>
+                                    </div>
+                                 </div>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+
+            {/* DESKTOP VIEW (TABLE) - Hidden on mobile */}
+            <div className="hidden md:block bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
                 <table className="w-full text-left text-sm">
                     <thead className="bg-slate-900/50 text-slate-400 text-xs uppercase">
                         <tr><th className="p-4">ID</th><th className="p-4">Cliente</th><th className="p-4">Total</th><th className="p-4">Status</th><th className="p-4 text-right">Ações</th></tr>
