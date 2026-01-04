@@ -652,8 +652,8 @@ const OrdersManager = ({ token, toast }: any) => {
                   <p className="text-slate-400 text-sm hidden md:block">Gerencie solicitações do site e do WhatsApp</p>
                 </div>
                 <div className="flex gap-2">
-                    {/* Clear Button (Priority 2) */}
-                    <button onClick={handleClearAll} className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 px-4 py-2 rounded-lg font-bold text-sm shadow-lg transition-colors"><i className="fa-solid fa-trash-can mr-2"></i> Limpar Lista</button>
+                    {/* Clear Button (Priority 2) - Redesigned for Visual Harmony */}
+                    <button onClick={handleClearAll} className="px-4 py-2 rounded-lg font-bold text-sm text-red-400 hover:text-white hover:bg-red-900/50 border border-red-900/30 hover:border-red-500 transition-all shadow-sm flex items-center gap-2"><i className="fa-solid fa-trash-can mr-2"></i> Limpar Lista</button>
                     <button onClick={() => setModal('create')} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg"><i className="fa-solid fa-plus mr-2"></i> Novo</button>
                     <button onClick={() => loadOrders()} className="p-2 text-slate-400 hover:text-white"><i className="fa-solid fa-sync"></i></button>
                 </div>
