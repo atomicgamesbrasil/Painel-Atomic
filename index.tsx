@@ -455,7 +455,17 @@ const ProductForm = ({ product, onClose, onSave }: any) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="md:col-span-2"><label className={STYLES.label}>Nome</label><input required className={STYLES.input} value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Ex: God of War Ragnarok" /></div>
                     <div><label className={STYLES.label}>Preço</label><input required className={STYLES.input} value={form.price} onChange={e => setForm({...form, price: formatCurrencyInput(e.target.value)})} placeholder="R$ 0,00" /></div>
-                    <div><label className={STYLES.label}>Categoria</label><select className={STYLES.input} value={form.category} onChange={e => setForm({...form, category: e.target.value})}><option value="games">Jogos</option><option value="console">Consoles</option><option value="acessorios">Acessórios</option><option value="hardware">Hardware</option></select></div>
+                    <div>
+                        <label className={STYLES.label}>Categoria</label>
+                        <select className={STYLES.input} value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
+                            <option value="games">Jogos</option>
+                            <option value="console">Consoles</option>
+                            <option value="acessorios">Acessórios</option>
+                            <option value="hardware">Hardware</option>
+                            <option value="destaques">Destaques</option>
+                            <option value="seminovos">Seminovos</option>
+                        </select>
+                    </div>
                     <div className="md:col-span-2"><FileUploader label="Imagem do Produto" currentImage={form.image} onFileSelect={setFile} /></div>
                     <div className="md:col-span-2"><label className={STYLES.label}>Descrição</label><textarea className={STYLES.input + " h-32 font-mono text-sm resize-none"} value={form.desc} onChange={e => setForm({...form, desc: e.target.value})} placeholder="Detalhes do produto..."></textarea></div>
                 </div>
